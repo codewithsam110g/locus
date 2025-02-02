@@ -43,3 +43,4 @@ app.*.map.json
 /android/app/release
 
 /supabase/functions/*
+/lib/firebase_options.dart
