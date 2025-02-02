@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "814624774577",
+    "firebase_url": "https://locus-d5ba9-default-rtdb.firebaseio.com",
+    "project_id": "locus-d5ba9",
+    "storage_bucket": "locus-d5ba9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:814624774577:android:f8a927e4456c7287db0590",
+        "android_client_info": {
+          "package_name": "com.codewithsam110g.locus"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "814624774577-ebst15mdsuc9a4r42pp5skk352t64966.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.codewithsam110g.locus",
+            "certificate_hash": "dfbee99b38b57a105352bf02b83ab13f5c42ed1a"
+          }
+        },
+        {
+          "client_id": "814624774577-2ancs6479g4r6g1e5hh94h6te0ks1sb0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSOV45L_o3czi5Lyri5hYI0bXdopwG2EM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "814624774577-2ancs6479g4r6g1e5hh94h6te0ks1sb0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
