@@ -94,10 +94,11 @@ Deno.serve(async (req) => {
     }
     const email = Deno.env.get("FCM_EMAIL");
     const fcm_key = Deno.env.get("FCM_PRIVATE_KEY");
+    const formattedKey = fcm_key.replace(/\\n/g, "\n");
     const accessToken = await getAccessToken({
       clientEmail:
         email,
-      privateKey:fcm_key});
+      privateKey:formattedKey});
 
     await sendLog("Obtained access token, sending notifications.");
 

@@ -1,11 +1,60 @@
 import 'package:flutter/material.dart';
 import 'package:locus/widgets/chat_bubble_user.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class Userview extends StatelessWidget {
-  final String name;
-  final String img;
+class Userview extends StatefulWidget {
+  final String id;
+  const Userview({super.key, required this.id});
 
-  const Userview({super.key, required this.name, required this.img});
+  @override
+  State<Userview> createState() => _UserviewState();
+}
+
+class _UserviewState extends State<Userview> {
+  String name = "Group name";
+  List<Map<String, dynamic>> messages = [];
+  bool isLoading = true;
+
+  final supabase = Supabase.instance.client;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCommunityInfo();
+  }
+
+  Future<void> fetchCommunityInfo() async {
+    final com = await supabase
+        .from("community")
+        .select("title")
+        .eq("com_id", widget.id)
+        .single();
+
+    setState(() {
+      name = com['title'].toString();
+    });
+
+    await fetchMessages();
+  }
+
+  Future<void> fetchMessages() async {
+    final fetchedMessages = await supabase
+        .from("community_messages")
+        .select("message, created_at")
+        .eq("com_id", widget.id)
+        .order("created_at", ascending: true);
+
+    setState(() {
+      messages = fetchedMessages;
+      isLoading = false;
+    });
+  }
+
+  String formatDateTime(String timestamp) {
+    DateTime dateTime = DateTime.parse(timestamp).toLocal();
+    return "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} "
+        "${dateTime.day.toString().padLeft(2, '0')}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.year}";
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,8 +64,8 @@ class Userview extends StatelessWidget {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            CircleAvatar(
-              backgroundImage: AssetImage(img),
+            const CircleAvatar(
+              backgroundImage: AssetImage("assets/img/mohan.jpg"),
             ),
             const SizedBox(width: 10),
             Text(
@@ -39,41 +88,42 @@ class Userview extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.only(top: 10.0),
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.only(left: 20),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.only(top: 10.0),
+              child: Column(
                 children: [
-                  ChatBubbleUser(
-                    message: "Hello! How are you?",
-                    time: "10:30 AM",
+                  Expanded(
+                    child: messages.isEmpty
+                        ? const Center(
+                            child: Text(
+                              "No messages yet",
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.only(left: 20),
+                            itemCount: messages.length,
+                            itemBuilder: (context, index) {
+                              final message = messages[index];
+                              return ChatBubbleUser(
+                                message: message["message"],
+                                time: formatDateTime(message["created_at"]),
+                              );
+                            },
+                          ),
                   ),
-                  ChatBubbleUser(
-                    message:
-                        "ghjgffdcghd  mohan basdve vdbsgzxz xbzhjdcvwsygdhw d GUX Z  YFAFX A",
-                    time: "10:30 AM",
-                  ),
-                  ChatBubbleUser(
-                    message:
-                        "Ut enim ad minim veniam, quis norud exercitation ullamco laboris.",
-                    time: "10:30 AM",
+                  const Padding(
+                    padding: EdgeInsets.all(10.0),
+                    child: Text(
+                      "Messaging is disabled in this chat.",
+                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
                   ),
                 ],
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.all(10.0),
-              child: Text(
-                "Messaging is disabled in this chat.",
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

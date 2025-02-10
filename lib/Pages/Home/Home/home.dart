@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:locus/Pages/Home/Home/profile.dart';
@@ -16,6 +17,9 @@ class _HomeState extends State<Home> {
   double _selectedRadius = 200.0;
   final supabase = Supabase.instance.client;
 
+  // List to hold community marker data (each with a title, latitude, and longitude).
+  List<Map<String, dynamic>> _communityMarkers = [];
+
   @override
   void initState() {
     super.initState();
@@ -23,26 +27,32 @@ class _HomeState extends State<Home> {
     _fetchRadiusFromDatabase();
   }
 
+  /// Gets the current location, updates the profile with it, and then fetches communities.
   Future<void> _getCurrentLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      // Optionally, show a message to the user.
       return;
     }
 
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.deniedForever || permission == LocationPermission.denied) {
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) {
+        // Optionally, show a message to the user.
         return;
       }
     }
 
-    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
     final user_id = supabase.auth.currentUser!.id;
 
+    // Update the user's last known location in the database.
     await supabase.from("profile").update({
       "last_loc": {
         "lat": position.latitude,
@@ -53,11 +63,19 @@ class _HomeState extends State<Home> {
     setState(() {
       _currentLocation = LatLng(position.latitude, position.longitude);
     });
+
+    // After the current location is set, fetch the nearby communities.
+    _fetchCommunities();
   }
 
+  /// Fetches the user's preferred radius from the database.
   Future<void> _fetchRadiusFromDatabase() async {
     final user_id = supabase.auth.currentUser!.id;
-    final response = await supabase.from('profile').select('range').eq('user_id', user_id).maybeSingle();
+    final response = await supabase
+        .from('profile')
+        .select('range')
+        .eq('user_id', user_id)
+        .maybeSingle();
     final range = response?['range'];
 
     setState(() {
@@ -65,8 +83,12 @@ class _HomeState extends State<Home> {
         _selectedRadius = range;
       }
     });
+
+    // Fetch communities if the radius changed.
+    _fetchCommunities();
   }
 
+  /// Displays a popup menu to select the radius.
   void _showRadiusDropdown(BuildContext context) {
     showMenu(
       context: context,
@@ -84,13 +106,73 @@ class _HomeState extends State<Home> {
           _selectedRadius = value;
         });
         _updateRadiusInDatabase(value);
+        // Re-fetch communities when the radius changes.
+        _fetchCommunities();
       }
     });
   }
 
+  /// Updates the radius in the user's profile.
   Future<void> _updateRadiusInDatabase(double radius) async {
     final user_id = supabase.auth.currentUser!.id;
-    await supabase.from('profile').update({'range': radius}).eq('user_id', user_id);
+    await supabase
+        .from('profile')
+        .update({'range': radius})
+        .eq('user_id', user_id);
+  }
+
+  /// Calculates the distance (in meters) between two geographic coordinates using the Haversine formula.
+  double _calculateDistance(
+      double lat1, double lon1, double lat2, double lon2) {
+    const double R = 6371000; // Earth's radius in meters.
+    final double dLat = (lat2 - lat1) * (pi / 180);
+    final double dLon = (lon2 - lon1) * (pi / 180);
+    final double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * (pi / 180)) *
+            cos(lat2 * (pi / 180)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+  /// Fetches communities from Supabase and updates the marker list if they are within the selected radius.
+  Future<void> _fetchCommunities() async {
+    if (_currentLocation == null) return;
+
+    // Fetch all community records.
+    final response = await supabase.from('community').select();
+    // Assume the response is a List<dynamic> of community records.
+    List<dynamic> communities = response;
+    List<Map<String, dynamic>> filteredMarkers = [];
+
+    for (var community in communities) {
+      // Ensure the community has a location and that it is accepted (adjust if needed).
+      if (community['location'] == null || community['accepted'] != true) continue;
+
+      final loc = community['location'];
+      final double communityLat = loc['lat'] is num
+          ? (loc['lat'] as num).toDouble()
+          : double.tryParse(loc['lat'].toString()) ?? 0;
+      final double communityLong = loc['long'] is num
+          ? (loc['long'] as num).toDouble()
+          : double.tryParse(loc['long'].toString()) ?? 0;
+
+      // Calculate the distance from the user's current location.
+      double distance = _calculateDistance(_currentLocation!.latitude,
+          _currentLocation!.longitude, communityLat, communityLong);
+      if (distance <= _selectedRadius) {
+        filteredMarkers.add({
+          'title': community['title'] ?? 'Community',
+          'lat': communityLat,
+          'long': communityLong,
+        });
+      }
+    }
+
+    setState(() {
+      _communityMarkers = filteredMarkers;
+    });
   }
 
   @override
@@ -111,7 +193,8 @@ class _HomeState extends State<Home> {
               padding: EdgeInsets.only(right: 20.0),
               child: GestureDetector(
                 onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (builder) => Profile()));
+                  Navigator.of(context).push(
+                      MaterialPageRoute(builder: (builder) => Profile()));
                 },
                 child: Icon(Icons.person, color: Colors.white),
               ),
@@ -137,10 +220,12 @@ class _HomeState extends State<Home> {
                       attributions: [
                         TextSourceAttribution(
                           'OpenStreetMap contributors',
-                          onTap: () => launchUrl(Uri.parse('https://openstreetmap.org/copyright')),
+                          onTap: () => launchUrl(Uri.parse(
+                              'https://openstreetmap.org/copyright')),
                         ),
                       ],
                     ),
+                    // Marker for the current user's location.
                     MarkerLayer(
                       markers: [
                         Marker(
@@ -151,6 +236,8 @@ class _HomeState extends State<Home> {
                         ),
                       ],
                     ),
+
+                    // Circle showing the selected radius.
                     CircleLayer(
                       circles: [
                         CircleMarker(
@@ -163,8 +250,23 @@ class _HomeState extends State<Home> {
                         ),
                       ],
                     ),
+                    // Marker layer for community pins.
+                    MarkerLayer(
+                      markers: _communityMarkers.map((community) {
+                        return Marker(
+                          point: LatLng(community['lat'], community['long']),
+                          width: 40,
+                          height: 40,
+                          child: Tooltip(
+                            message: community['title'],
+                            child: Icon(Icons.location_on, size: 40, color: Colors.green),
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ],
                 ),
+                // Radius selector positioned at the top-right.
                 Positioned(
                   top: 20,
                   right: 20,
@@ -179,9 +281,12 @@ class _HomeState extends State<Home> {
                         padding: const EdgeInsets.all(8.0),
                         child: Row(
                           children: [
-                            Icon(Icons.radio_button_checked, color: Colors.black, size: 20),
+                            Icon(Icons.radio_button_checked,
+                                color: Colors.black, size: 20),
                             SizedBox(width: 10),
-                            Text('$_selectedRadius m', style: TextStyle(color: Colors.black, fontSize: 16)),
+                            Text('$_selectedRadius m',
+                                style: TextStyle(
+                                    color: Colors.black, fontSize: 16)),
                           ],
                         ),
                       ),

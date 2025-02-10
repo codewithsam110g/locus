@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:locus/widgets/button.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+
 
 class Newgroup extends StatefulWidget {
   @override
-  _NewgroupState createState() => _NewgroupState();
+   createState() => _NewgroupState();
 }
 
 class _NewgroupState extends State<Newgroup> {
@@ -17,6 +21,8 @@ class _NewgroupState extends State<Newgroup> {
 
   String? _logoError;
   String? _tagError;
+
+  final supabase = Supabase.instance.client;
 
   // Function to pick an image from the gallery
   Future<void> _chooseFile() async {
@@ -36,7 +42,7 @@ class _NewgroupState extends State<Newgroup> {
       _descriptionError = _descriptionController.text.isEmpty
           ? 'Please enter a description'
           : null;
-      _logoError = _selectedImage == null ? 'Please select a logo' : null;
+      //_logoError = _selectedImage == null ? 'Please select a logo' : null;
       _tagError = _selectedTag == null ? 'Please select a tag' : null;
       isValid = _titleError == null &&
           _descriptionError == null &&
@@ -45,16 +51,80 @@ class _NewgroupState extends State<Newgroup> {
     });
     return isValid;
   }
-
-  // Function to clear all fields
-  void _clearFields() {
-    setState(() {
-      _titleController.clear();
-      _descriptionController.clear();
-      _selectedImage = null;
-      _selectedTag = null;
-    });
+  
+  Future<Position?> _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+  
+    // Check if location services are enabled
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      Fluttertoast.showToast(msg: "Location services are disabled.");
+      return null;
+    }
+  
+    // Request permission
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        Fluttertoast.showToast(msg: "Location permission denied.");
+        return null;
+      }
+    }
+  
+    if (permission == LocationPermission.deniedForever) {
+      Fluttertoast.showToast(
+          msg: "Location permission is permanently denied. Enable it in settings.");
+      return null;
+    }
+  
+    // Get current position
+    return await Geolocator.getCurrentPosition();
   }
+  
+  Future<void> requestCommunity() async {
+    final title = _titleController.text.trim();
+    final desc = _descriptionController.text.trim();
+    final tags = _selectedTag!.trim();
+    final com_id = title.replaceAll(" ", "_");
+    final userId = supabase.auth.currentUser!.id;
+  
+    // Fetch the user's profile
+    final prof = await supabase
+        .from("profile")
+        .select("com_id")
+        .eq("user_id", userId)
+        .single();
+  
+    if (prof["com_id"] != null) {
+      Fluttertoast.showToast(msg: "You already have a group!");
+      return;
+    }
+  
+    // Get the current location
+    Position? position = await _getCurrentLocation();
+    if (position == null) {
+      return; // Stop execution if location is not available
+    }
+  
+    final locationData = {
+      "lat": position.latitude,
+      "long": position.longitude
+    };
+  
+    // Insert into database
+    await supabase.from("community").insert({
+      "com_id": com_id,
+      "tags": tags,
+      "title": title,
+      "desc": desc,
+      "location": locationData
+    });
+  
+    await supabase.from("profile").update({"com_id": com_id}).eq("user_id", userId);
+  }
+
 
   // Function to show a dialog box
   void _showConfirmationDialog() {
@@ -69,15 +139,17 @@ class _NewgroupState extends State<Newgroup> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
+              await requestCommunity();
               Navigator.pop(context);
-              _clearFields();
             },
             child: const Text('Request'),
           ),
         ],
       ),
-    );
+    ).then((value) {
+      Navigator.pop(context);
+    });
   }
 
   @override
