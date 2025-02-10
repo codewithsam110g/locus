@@ -190,7 +190,7 @@ class _Register1State extends State<Register1> {
       ),
     );
   }
-
+  
   void _validateForm() {
     setState(() {
       _passwordError =
