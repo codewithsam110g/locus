@@ -14,22 +14,22 @@ class Settings extends StatefulWidget {
   State<Settings> createState() => _SettingsState();
 }
 
-Future<void> signOut() async {
-  const webClientId =
-      '814624774577-2ancs6479g4r6g1e5hh94h6te0ks1sb0.apps.googleusercontent.com';
-  const iosClientId = '';
-
-  final GoogleSignIn googleSignIn = GoogleSignIn(
-    clientId: iosClientId,
-    serverClientId: webClientId,
-  );
-  final supabase = Supabase.instance.client;
-  await googleSignIn.signOut();
-  await supabase.auth.signOut();
-}
-
 class _SettingsState extends State<Settings> {
-  bool _isLoading = false; // To manage loading state
+
+
+  Future<void> signOut() async {
+    const webClientId =
+        '814624774577-2ancs6479g4r6g1e5hh94h6te0ks1sb0.apps.googleusercontent.com';
+    const iosClientId = '';
+
+    final GoogleSignIn googleSignIn = GoogleSignIn(
+      clientId: iosClientId,
+      serverClientId: webClientId,
+    );
+    final supabase = Supabase.instance.client;
+    await googleSignIn.signOut();
+    await supabase.auth.signOut();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +37,37 @@ class _SettingsState extends State<Settings> {
     double width = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.primary,
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        title: const Padding(
+          padding: EdgeInsets.only(left: 20.0),
+          child: Text(
+            'Settings',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+              fontFamily: 'Electrolize',
+            ),
+          ),
+        ),
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(right: 20.0),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(context).pop();
+              },
+              child: Icon(
+                Icons.close,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           SizedBox(
@@ -50,33 +80,6 @@ class _SettingsState extends State<Settings> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      SizedBox(height: height * 0.08),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.of(context).maybePop();
-                            },
-                            child: Icon(
-                              Icons.arrow_back_ios,
-                              color: Theme.of(context).colorScheme.tertiary,
-                            ),
-                          ),
-                          Text(
-                            'Settings',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(context).colorScheme.tertiary,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.arrow_back_ios,
-                            color: Colors.transparent,
-                          )
-                        ],
-                      ),
                       SizedBox(height: height * 0.05),
                       Expanded(
                         child: SingleChildScrollView(
@@ -85,23 +88,11 @@ class _SettingsState extends State<Settings> {
                               Editcontainer(
                                 text: 'Update Password',
                                 function: () {
-                                  setState(() {
-                                    _isLoading = true;
-                                  });
-                                  Future.delayed(const Duration(seconds: 2),
-                                      () {
-                                    Navigator.of(context)
-                                        .push(
-                                      MaterialPageRoute(
-                                        builder: (builder) => Updatepassword(),
-                                      ),
-                                    )
-                                        .then((_) {
-                                      setState(() {
-                                        _isLoading = false;
-                                      });
-                                    });
-                                  });
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (builder) => Updatepassword(),
+                                    ),
+                                  );
                                 },
                                 need: true,
                                 icon: Icons.person_4_outlined,
@@ -110,20 +101,11 @@ class _SettingsState extends State<Settings> {
                               Editcontainer(
                                 text: 'Report Problem',
                                 function: () {
-                                  setState(() {
-                                    _isLoading = true;
-                                  });
-                                  Future.delayed(Duration(seconds: 2), () {
-                                    Navigator.of(context)
-                                        .push(MaterialPageRoute(
-                                            builder: (builder) =>
-                                                Reportproblrm()))
-                                        .then((_) {
-                                      setState(() {
-                                        _isLoading = false;
-                                      });
-                                    });
-                                  });
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (builder) => Reportproblrm(),
+                                    ),
+                                  );
                                 },
                                 need: true,
                                 icon: Icons.warning_amber,
@@ -132,20 +114,11 @@ class _SettingsState extends State<Settings> {
                               Editcontainer(
                                 text: 'Feedback',
                                 function: () {
-                                  setState(() {
-                                    _isLoading = true;
-                                  });
-                                  Future.delayed(Duration(seconds: 2), () {
-                                    Navigator.of(context)
-                                        .push(MaterialPageRoute(
-                                            builder: (builder) =>
-                                                const FeedBack()))
-                                        .then((_) {
-                                      setState(() {
-                                        _isLoading = false;
-                                      });
-                                    });
-                                  });
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (builder) => const FeedBack(),
+                                    ),
+                                  );
                                 },
                                 need: true,
                                 icon: Icons.feedback_outlined,
@@ -154,19 +127,11 @@ class _SettingsState extends State<Settings> {
                               Editcontainer(
                                 text: 'Delete my account',
                                 function: () {
-                                  setState(() {
-                                    _isLoading = true;
-                                  });
-                                  Future.delayed(Duration(seconds: 2), () {
-                                    Navigator.of(context)
-                                        .push(MaterialPageRoute(
-                                            builder: (builder) => Delete()))
-                                        .then((_) {
-                                      setState(() {
-                                        _isLoading = false;
-                                      });
-                                    });
-                                  });
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (builder) => Delete(),
+                                    ),
+                                  );
                                 },
                                 need: true,
                                 icon: Icons.delete_outline,
@@ -175,23 +140,18 @@ class _SettingsState extends State<Settings> {
                               Editcontainer(
                                 text: 'Log out',
                                 function: () {
-                                  setState(() {
-                                    _isLoading = true;
-                                  });
-                                  Future.delayed(Duration(seconds: 2), () {
-                                    ConfirmToDelete(
-                                      message:
-                                          'Are you sure you want to logout your Tepnoty account?',
-                                      () {
-                                        signOut();
-                                        Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                                builder: (context) {
-                                          return Loginmain();
-                                        }));
-                                      },
-                                    ).showConfirmDialog(context);
-                                  });
+                                  ConfirmToDelete(
+                                    message:
+                                        'Are you sure you want to logout your Locus account?',
+                                    () {
+                                      signOut();
+                                      Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                              builder: (context) {
+                                        return Loginmain();
+                                      }));
+                                    },
+                                  ).showConfirmDialog(context);
                                 },
                                 need: true,
                                 icon: Icons.logout,
@@ -207,14 +167,6 @@ class _SettingsState extends State<Settings> {
               ],
             ),
           ),
-          if (_isLoading)
-            Center(
-              child: CircularProgressIndicator(
-                color: Theme.of(context)
-                    .colorScheme
-                    .primary, // Customize the color
-              ),
-            ),
         ],
       ),
     );

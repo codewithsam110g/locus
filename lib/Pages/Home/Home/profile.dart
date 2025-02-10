@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import 'package:locus/Pages/Home/Settings/settings.dart';
 import 'package:locus/Pages/Home/Settings/editProfile.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,6 +14,7 @@ class Profile extends StatefulWidget {
 class _ProfileState extends State<Profile> {
   String? name;
   String? email;
+  Color? avatarColor;
 
   @override
   void initState() {
@@ -26,11 +28,24 @@ class _ProfileState extends State<Profile> {
     final prof = await supabase
         .from('profile')
         .select("name,email")
-        .eq("user_id", user_id).maybeSingle();
+        .eq("user_id", user_id)
+        .maybeSingle();
+    
     setState(() {
-      name = prof!["name"] as String?;
-      email = prof!["email"] as String?;
+      name = prof?["name"] as String?;
+      email = prof?["email"] as String?;
+      avatarColor = getRandomColor();
     });
+  }
+
+  Color getRandomColor() {
+    final random = Random();
+    return Color.fromARGB(
+      255,
+      random.nextInt(256),
+      random.nextInt(256),
+      random.nextInt(256),
+    );
   }
 
   @override
@@ -66,9 +81,17 @@ class _ProfileState extends State<Profile> {
               padding: const EdgeInsets.only(top: 30.0),
               child: Column(
                 children: [
-                  const CircleAvatar(
-                    backgroundImage: AssetImage('assets/img/mohan.jpg'),
+                  CircleAvatar(
+                    backgroundColor: avatarColor ?? Colors.grey,
                     radius: 60,
+                    child: Text(
+                      (name != null && name!.isNotEmpty) ? name![0].toUpperCase() : '?',
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                   const SizedBox(
                     height: 15,
@@ -81,14 +104,6 @@ class _ProfileState extends State<Profile> {
                       color: Colors.black,
                     ),
                   ),
-                  // Text(
-                  //   'mohanveera_9',
-                  //   style: TextStyle(
-                  //     fontSize: 18,
-                  //     fontWeight: FontWeight.w400,
-                  //     color: Colors.black,
-                  //   ),
-                  // ),
                   Text(
                     email ?? "Loading",
                     style: TextStyle(

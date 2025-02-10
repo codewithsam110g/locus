@@ -5,10 +5,45 @@ import 'package:locus/widgets/inputfeilds.dart';
 import 'package:locus/Pages/LoginRegister/loginMain.dart';
 import 'package:locus/widgets/otherOptions.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class Register2 extends StatefulWidget {
   @override
   State<Register2> createState() => _Register2State();
+}
+
+Future<void> doStuff() async {
+  await requestPermission();
+  await getFCMToken();
+}
+
+Future<void> requestPermission() async {
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+  NotificationSettings settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    print("Permission granted");
+  } else {
+    print("Permission denied");
+  }
+}
+
+Future<void> setFcmToken(String? token) async {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser!.id;
+  await supabase
+      .from("profile")
+      .update({"fcm_token": token}).eq("user_id", userId);
+}
+
+Future<void> getFCMToken() async {
+  String? token = await FirebaseMessaging.instance.getToken();
+  print("FCM Token: $token");
+  await setFcmToken(token);
 }
 
 class _Register2State extends State<Register2> {
@@ -31,14 +66,6 @@ class _Register2State extends State<Register2> {
     final bday = _bdayController.text.trim();
     final gender = _genderController.text.trim();
 
-    print({
-      "user_id": user_id,
-      "email": email,
-      "name": name,
-      "dob": bday,
-      "gender": gender
-    });
-
     await supabase.from("profile").insert({
       "user_id": user_id,
       "email": email,
@@ -46,6 +73,8 @@ class _Register2State extends State<Register2> {
       "dob": bday,
       "gender": gender
     });
+
+    await doStuff();
   }
 
   @override

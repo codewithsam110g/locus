@@ -20,8 +20,12 @@ class Explorecontainer extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            width: 1,
+            color: Colors.black
+          )
         ),
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(5.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

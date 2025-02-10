@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:locus/Pages/Home/Chat/chat.dart';
 import 'package:locus/Pages/Home/Explore/explore.dart';
 import 'package:locus/Pages/Home/Home/home.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Mainscreen extends StatefulWidget {
   @override
@@ -12,8 +12,7 @@ class Mainscreen extends StatefulWidget {
 
 class _MainscreenState extends State<Mainscreen> {
   int _selectedIndex = 1;
-  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
-      GlobalKey<ScaffoldMessengerState>();
+  int unseenCount = 0;
 
   final List<Widget> _pages = [
     Explore(),
@@ -23,23 +22,11 @@ class _MainscreenState extends State<Mainscreen> {
 
   void _onItemTapped(int index) {
     setState(() {
-      _selectedIndex = index;
+      if (index == 2) {
+        unseenCount = 0;
+      }
+      _selectedIndex = index; // Update the selected tab index
     });
-  }
-
-  Future<void> requestPermission() async {
-    FirebaseMessaging messaging = FirebaseMessaging.instance;
-    NotificationSettings settings = await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print("Permission granted");
-    } else {
-      print("Permission denied");
-    }
   }
 
   Future<void> setFcmToken(String? token) async {
@@ -50,16 +37,19 @@ class _MainscreenState extends State<Mainscreen> {
         .update({"fcm_token": token}).eq("user_id", userId);
   }
 
-  Future<void> getFCMToken() async {
-    String? token = await FirebaseMessaging.instance.getToken();
-    print("FCM Token: $token");
-    await setFcmToken(token);
-  }
+  void doStuff() async {
+    FirebaseMessaging.instance.onTokenRefresh.listen((fcmToken) async {
+      await setFcmToken(fcmToken);
+    });
 
-  @override
-  void initState() {
-    super.initState();
-    doStuff();
+    FirebaseMessaging.onMessage.listen((payload) {
+      final notif = payload.notification;
+      if (notif != null) {
+        setState(() {
+          unseenCount++; // Increase unseen message count
+        });
+      }
+    });
   }
 
   void _showPopupDialog(String? title, String? body) {
@@ -82,97 +72,107 @@ class _MainscreenState extends State<Mainscreen> {
     );
   }
 
-  void doStuff() async {
-    await requestPermission();
-    await getFCMToken();
-
-    FirebaseMessaging.instance.onTokenRefresh.listen((fcmToken) async {
-      await setFcmToken(fcmToken);
-    });
-
-    FirebaseMessaging.onMessage.listen((payload) {
-      final notif = payload.notification;
-      if (notif != null) {
-        _showPopupDialog(notif.title, notif.body);
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
+    doStuff();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldMessenger(
-      key:
-          _scaffoldMessengerKey, // Attach the key here (if needed for other use cases)
-      child: Scaffold(
-        body: Stack(
-          children: [
-            // Display the currently selected page
-            _pages[_selectedIndex],
-            // Custom bottom navigation bar
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(40),
-                    topRight: Radius.circular(40),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      spreadRadius: 5,
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildNavItem(Icons.explore, 'Explore', 0),
-                    _buildNavItem(Icons.home, 'Home', 1),
-                    _buildNavItem(Icons.forum, 'Chat', 2),
-                  ],
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      body: Stack(
+        children: [
+          // Display the currently selected page
+          IndexedStack(
+            index: _selectedIndex,
+            children: _pages,
+          ),
+          // Custom bottom navigation bar using Stack and Positioned
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 80,
+              decoration: BoxDecoration(
+                // color: Color(0xFFF7FEE7),
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(40),
+                  topRight: Radius.circular(40),
                 ),
               ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNavItem(Icons.explore, 'Explore', 0),
+                  _buildNavItem(Icons.home, 'Home', 1),
+                  _buildNavItem(Icons.forum, 'Chat', 2, unseenCount),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
+  Widget _buildNavItem(IconData icon, String label, int index,
+      [int count = 0]) {
     bool isSelected = _selectedIndex == index;
     return GestureDetector(
       onTap: () => _onItemTapped(index),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Stack(
+        clipBehavior: Clip.none, // Ensure badge is not clipped
         children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 10.0),
-            child: Icon(
-              icon,
-              size: 40,
-              color: isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : Colors.black.withOpacity(0.6),
-            ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 30,
+                color:
+                    isSelected ? Colors.white : Colors.black.withOpacity(0.6),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color:
+                      isSelected ? Colors.white : Colors.black.withOpacity(0.6),
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : Colors.black.withOpacity(0.6),
-              fontSize: 12,
+          if (count > 0 && index == 2) // Show badge only for Chat
+            Positioned(
+              top: -5, // Move slightly above the icon
+              right: -5, // Move slightly to the right
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 18,
+                  minHeight: 18,
+                ),
+                child: Text(
+                  '$count',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );

@@ -11,9 +11,9 @@ class ConfirmToDelete {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: const Color.fromRGBO(21, 21, 21, 1),
+          backgroundColor: Colors.white,
           content: Column(
-            mainAxisSize: MainAxisSize.min, 
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 message,
@@ -21,7 +21,7 @@ class ConfirmToDelete {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
-                  color: Theme.of(context).colorScheme.secondary,
+                  color: Colors.black,
                 ),
               ),
               const SizedBox(height: 20),
@@ -33,7 +33,7 @@ class ConfirmToDelete {
                     style: ButtonStyle(
                       elevation: MaterialStateProperty.all(0),
                       backgroundColor: MaterialStateProperty.all(
-                        Theme.of(context).colorScheme.tertiary,
+                        Theme.of(context).colorScheme.primary,
                       ),
                       shape: MaterialStateProperty.all(
                         RoundedRectangleBorder(
@@ -49,7 +49,7 @@ class ConfirmToDelete {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.secondary,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -65,7 +65,7 @@ class ConfirmToDelete {
                           MaterialStateProperty.all(Colors.transparent),
                       side: MaterialStateProperty.all(
                         BorderSide(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.primary,
                           width: 1.5,
                         ),
                       ),
@@ -83,7 +83,7 @@ class ConfirmToDelete {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.secondary,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),

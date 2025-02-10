@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:locus/widgets/button.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Newgroup extends StatefulWidget {
   @override
@@ -18,8 +17,6 @@ class _NewgroupState extends State<Newgroup> {
 
   String? _logoError;
   String? _tagError;
-
-  final supabase = Supabase.instance.client;
 
   // Function to pick an image from the gallery
   Future<void> _chooseFile() async {
@@ -39,7 +36,7 @@ class _NewgroupState extends State<Newgroup> {
       _descriptionError = _descriptionController.text.isEmpty
           ? 'Please enter a description'
           : null;
-      //_logoError = _selectedImage == null ? 'Please select a logo' : null;
+      _logoError = _selectedImage == null ? 'Please select a logo' : null;
       _tagError = _selectedTag == null ? 'Please select a tag' : null;
       isValid = _titleError == null &&
           _descriptionError == null &&
@@ -49,14 +46,14 @@ class _NewgroupState extends State<Newgroup> {
     return isValid;
   }
 
-  Future<void> requestCommunity() async {
-    final title = _titleController.text.trim();
-    final desc = _descriptionController.text.trim();
-    final tags = _selectedTag!.trim();
-    final com_id = title.replaceAll(" ", "_");
-    await supabase
-        .from("community")
-        .insert({"com_id": com_id, "tags": tags, "title": title, "desc": desc});
+  // Function to clear all fields
+  void _clearFields() {
+    setState(() {
+      _titleController.clear();
+      _descriptionController.clear();
+      _selectedImage = null;
+      _selectedTag = null;
+    });
   }
 
   // Function to show a dialog box
@@ -72,17 +69,15 @@ class _NewgroupState extends State<Newgroup> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () async{
-              await requestCommunity();
+            onPressed: () {
               Navigator.pop(context);
+              _clearFields();
             },
             child: const Text('Request'),
           ),
         ],
       ),
-    ).then((value) {
-      Navigator.pop(context);
-    });
+    );
   }
 
   @override

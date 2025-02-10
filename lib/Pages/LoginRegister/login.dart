@@ -1,19 +1,62 @@
 import 'package:flutter/material.dart';
+import 'package:locus/Pages/Home/mainScreen.dart';
 import 'package:locus/Pages/LoginRegister/register/registerMain.dart';
 import 'package:locus/widgets/button.dart';
 import 'package:locus/widgets/inputfeilds.dart';
 import 'package:locus/widgets/otherOptions.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class Login extends StatefulWidget {
   @override
   State<Login> createState() => _LoginState();
 }
 
-Future<void> signInWithEmail(String? email, String? pwd) async {
+Future<void> doStuff() async {
+  await requestPermission();
+  await getFCMToken();
+}
+
+Future<void> requestPermission() async {
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+  NotificationSettings settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    print("Permission granted");
+  } else {
+    print("Permission denied");
+  }
+}
+
+Future<void> setFcmToken(String? token) async {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser!.id;
+  await supabase
+      .from("profile")
+      .update({"fcm_token": token}).eq("user_id", userId);
+}
+
+Future<void> getFCMToken() async {
+  String? token = await FirebaseMessaging.instance.getToken();
+  print("FCM Token: $token");
+  await setFcmToken(token);
+}
+
+Future<void> signInWithEmail(
+    BuildContext ctx, String? email, String? pwd) async {
   final supabase = Supabase.instance.client;
   final AuthResponse res =
       await supabase.auth.signInWithPassword(email: email, password: pwd ?? "");
+  await doStuff();
+  Navigator.of(ctx).push(
+    MaterialPageRoute(
+      builder: (builder) => Mainscreen(),
+    ),
+  );
 }
 
 class _LoginState extends State<Login> {
@@ -26,7 +69,6 @@ class _LoginState extends State<Login> {
 
   String? _usernameError;
   String? _passwordError;
-  String? _confirmPasswordError;
 
   @override
   Widget build(BuildContext context) {
@@ -71,11 +113,10 @@ class _LoginState extends State<Login> {
                   children: [
                     const SizedBox(height: 30),
                     Inputfields(
-                      title: 'Username or ID',
+                      title: 'Email',
                       emoji: const Icon(Icons.person_2_outlined),
                       controller: _nameController,
                       onTap: (value) {
-                        // This placeholder ensures the function doesn't return a validation error string
                         return null;
                       },
                       keyBoard1: false,
@@ -116,16 +157,10 @@ class _LoginState extends State<Login> {
                           colors: Theme.of(context).colorScheme.primary,
                           textColor: Colors.white,
                           onTap: () {
-                            setState(() {
-                              _isSubmitted = true;
-                              _validateForm();
-                            });
-                            if (_formKey.currentState!.validate() &&
-                                _usernameError == null &&
-                                _passwordError == null &&
-                                _confirmPasswordError == null) {
-                              signInWithEmail(_nameController.text, _passwordController.text);
-                            }
+                            signInWithEmail(
+                                context,
+                                _nameController.text.trim(),
+                                _passwordController.text.trim());
                           },
                         ),
                       ),
@@ -163,19 +198,5 @@ class _LoginState extends State<Login> {
         ),
       ),
     );
-  }
-
-  void _validateForm() {
-    setState(() {
-      _usernameError =
-          _nameController.text.isEmpty ? "Username is required" : null;
-      _passwordError =
-          _passwordController.text.isEmpty ? "Password is required" : null;
-    });
-  }
-
-  void _clearFields() {
-    _nameController.clear();
-    _passwordController.clear();
   }
 }

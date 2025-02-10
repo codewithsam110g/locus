@@ -23,6 +23,10 @@ class Editcontainer extends StatelessWidget {
         width: double.infinity,
         height: height * 0.07,
         decoration: BoxDecoration(
+          border: Border.all(
+            width: 1,
+            color: Colors.black,
+          ),
             color: Theme.of(context).colorScheme.tertiary,
             borderRadius: BorderRadius.circular(24)),
         child: Padding(
