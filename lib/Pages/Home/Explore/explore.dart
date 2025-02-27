@@ -80,6 +80,7 @@ class _ExploreState extends State<Explore> {
     setState(() {
       isLoading = false;
     });
+    
   }
 
   /// Calculates the distance (in meters) between two geographic coordinates

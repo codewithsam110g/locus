@@ -3,14 +3,15 @@ import 'package:locus/Pages/Home/Chat/chatInterface.dart';
 import 'package:locus/widgets/chat_bubble_user.dart';
 import 'package:locus/widgets/Buttons/InnerButton.dart';
 import 'package:locus/widgets/Buttons/OuterButton.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Chatforrequested extends StatefulWidget {
   final String img;
-  final String name;
+  final String id;
 
   const Chatforrequested({
     super.key,
-    required this.name,
+    required this.id,
     required this.img,
   });
 
@@ -21,10 +22,11 @@ class Chatforrequested extends StatefulWidget {
 class _ChatforrequestedState extends State<Chatforrequested> {
   final TextEditingController _controller = TextEditingController();
   bool isTyping = false;
-  final List<String> receivedMessages = [
-   
-  ];
+  final List<String> receivedMessages = [];
   final List<String> sentMessages = [];
+  final supabase = Supabase.instance.client;
+  String? userName; // Variable to store the fetched username
+  bool isLoading = true; // Loading state
 
   @override
   void initState() {
@@ -34,6 +36,58 @@ class _ChatforrequestedState extends State<Chatforrequested> {
         isTyping = _controller.text.isNotEmpty;
       });
     });
+    _fetchUserName();
+  }
+
+  Future<void> _acceptChatRequest() async {
+    final currentUserId = supabase.auth.currentUser?.id;
+    if (currentUserId == null) return;
+  
+    try {
+      // Step 1: Update request status to "accept"
+      await supabase
+          .from('requests')
+          .update({'status': 'accept'})
+          .match({
+            'reciever_uid': currentUserId,
+            'requested_uid': widget.id
+          });
+  
+      // Step 2: Insert a new chat entry (no sorting needed)
+      await supabase.from('chats').insert({
+        'uid_1': currentUserId,
+        'uid_2': widget.id,
+        'is_active': true
+      });
+  
+      // Navigate to chat interface
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (builder) => Chatinterface(
+            id: widget.id,
+            avatar: Image.asset(widget.img),
+          ),
+        ),
+      );
+    } catch (error) {
+      print('Error accepting request: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to accept request!')),
+      );
+    }
+  }
+  
+  Future<void> _fetchUserName() async {
+    final response = await supabase
+        .from('profile')
+        .select('name')
+        .eq('user_id', widget.id)
+        .maybeSingle(); // Get a single user or null
+
+    setState(() {
+      userName = response?['name'] ?? 'Unknown User';
+      isLoading = false;
+    });
   }
 
   @override
@@ -42,50 +96,14 @@ class _ChatforrequestedState extends State<Chatforrequested> {
     super.dispose();
   }
 
-  void showConfirmationDialog(BuildContext context, String title,
-      String message, VoidCallback onConfirm) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: Text(title, style: TextStyle(color: Colors.black)),
-          content: Text(message, style: TextStyle(color: Colors.black)),
-          backgroundColor: Colors.white,
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-              child: Text(
-                'Cancel',
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                onConfirm();
-                Navigator.of(context)
-                    .pop(); // Close the dialog after confirmation
-              },
-              child: Text(
-                'Confirm',
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Widget to display received messages
   Widget buildReceivedMessage(String message, String img) {
     return Align(
-        alignment: Alignment.centerLeft,
-        child: ChatBubbleUser(
-          message: message,
-          time: '10:20 AM',
-        ));
+      alignment: Alignment.centerLeft,
+      child: ChatBubbleUser(
+        message: message,
+        time: '10:20 AM',
+      ),
+    );
   }
 
   @override
@@ -103,14 +121,16 @@ class _ChatforrequestedState extends State<Chatforrequested> {
                 backgroundImage: AssetImage(widget.img),
               ),
               const SizedBox(width: 10),
-              Text(
-                widget.name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: Colors.white,
-                  fontFamily: 'Electrolize',
-                ),
-              ),
+              isLoading
+                  ? const CircularProgressIndicator() // Show loading indicator
+                  : Text(
+                      userName ?? 'Unknown',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        color: Colors.white,
+                        fontFamily: 'Electrolize',
+                      ),
+                    ),
             ],
           ),
         ),
@@ -128,14 +148,11 @@ class _ChatforrequestedState extends State<Chatforrequested> {
         ],
       ),
       body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Spacer(
-              flex: 2,
-            ),
-            // Message list
+            const Spacer(flex: 2),
             Expanded(
               child: ListView.builder(
                 itemCount: receivedMessages.length,
@@ -147,11 +164,10 @@ class _ChatforrequestedState extends State<Chatforrequested> {
                 },
               ),
             ),
-
             Align(
               alignment: Alignment.center,
               child: Text(
-                'Accept message request from ${widget.name} ?',
+                'Accept message request from ${userName ?? "Unknown User"}?',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 15,
@@ -160,10 +176,8 @@ class _ChatforrequestedState extends State<Chatforrequested> {
                 ),
               ),
             ),
-            SizedBox(
-              height: 20,
-            ),
-            Text(
+            const SizedBox(height: 20),
+            const Text(
               'If you accept, they will also be able to call you and see info such as your activity and status when you have read messages.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -172,31 +186,18 @@ class _ChatforrequestedState extends State<Chatforrequested> {
                 color: Color.fromRGBO(190, 190, 190, 1),
               ),
             ),
-            SizedBox(
-              height: 20,
-            ),
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Outerbutton(text: 'Reject'),
+                const Outerbutton(text: 'Reject'),
                 Innerbutton(
-                  function: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (builder) => Chatinterface(
-                          name: widget.name,
-                          img: widget.img,
-                        ),
-                      ),
-                    );
-                  },
+                  function: _acceptChatRequest,
                   text: 'Accept',
                 ),
               ],
             ),
-            SizedBox(
-              height: 20,
-            )
+            const SizedBox(height: 20),
           ],
         ),
       ),

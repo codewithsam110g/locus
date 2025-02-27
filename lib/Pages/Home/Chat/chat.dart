@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:locus/Pages/Home/Chat/chatInterface.dart';
 import 'package:locus/Pages/Home/Chat/message.dart';
@@ -9,8 +8,10 @@ import 'package:locus/widgets/chatContainer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Chat extends StatefulWidget {
+  const Chat({super.key});
+
   @override
-  _ChatState createState() => _ChatState();
+  State<Chat> createState() => _ChatState();
 }
 
 class _ChatState extends State<Chat> {
@@ -48,65 +49,86 @@ class _ChatState extends State<Chat> {
     });
   }
 
-  /// Deletes messages older than 24 hours.
-  Future<void> _deleteOldMessages() async {
-    final threshold =
-        DateTime.now().toUtc().subtract(const Duration(hours: 24));
-    await supabase
-        .from("messages")
-        .delete()
-        .lt("created_at", threshold.toIso8601String());
-  }
-
-  /// Fetches messages from Supabase and filters them based on location.
   Future<void> _fetchMessages() async {
-    // Delete messages older than 24 hours.
-    await _deleteOldMessages();
-
-    // Fetch messages with the sender's profile (including name) and location.
-    final response = await supabase
-        .from("messages")
-        .select(
-            "message, user_id, created_at, profile(name), location, created_at")
-        .order("id");
-
-    // Filter messages based on the sender's location.
-    final filteredMessages = response.where((message) {
-      final profile = message['profile'];
-      if (profile == null || message['location'] == null) return false;
-      final loc = message['location'];
-      final double senderLat = loc['lat'] is num
-          ? loc['lat'].toDouble()
-          : double.tryParse(loc['lat'].toString()) ?? 0;
-      final double senderLong = loc['lng'] is num
-          ? loc['lng'].toDouble()
-          : double.tryParse(loc['lng'].toString()) ?? 0;
-      final double distance = calculateDistance(
-          currentUserLat, currentUserLong, senderLat, senderLong);
-      return distance <= distanceThreshold;
-    }).toList();
-
     final currentUserId = supabase.auth.currentUser!.id;
-
+  
+    // Fetch current user location & range
+    final userData = await supabase
+        .from('profile')
+        .select("last_loc, range")
+        .eq("user_id", currentUserId)
+        .single();
+  
+    final double currentUserLat =
+        (userData["last_loc"]["lat"] as num).toDouble();
+    final double currentUserLong =
+        (userData["last_loc"]["long"] as num).toDouble();
+    final double distanceThreshold = (userData["range"] as num).toDouble();
+  
+    // Call stored procedure in Supabase to get nearby messages
+    final response = await supabase.rpc('get_nearby_messages', params: {
+      'lat': currentUserLat,
+      'long': currentUserLong,
+      'max_distance': distanceThreshold
+    });
+  
+    // Fetch request data for the current user (involving any other user)
+    final requestsData = await supabase
+        .from('requests')
+        .select('requested_uid, reciever_uid, status')
+        .or('requested_uid.eq.$currentUserId,reciever_uid.eq.$currentUserId');
+  
+    // Update state with messages and determine isActive status using requests table
     setState(() {
-      chats = filteredMessages.map<Map<String, dynamic>>((message) {
+      chats = response.map<Map<String, dynamic>>((message) {
         DateTime dateTime = DateTime.parse(message["created_at"]).toLocal();
         String formattedDateTime =
             "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} "
             "${dateTime.day.toString().padLeft(2, '0')}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.year}";
+  
+        // The other user's id (person we want to chat with)
+        String otherId = message['user_id'];
+  
+        // Determine the request status between currentUserId and otherId.
+        String requestStatus = "";
+        if (requestsData != null) {
+          for (var req in requestsData) {
+            if ((req['requested_uid'] == currentUserId &&
+                    req['reciever_uid'] == otherId) ||
+                (req['requested_uid'] == otherId &&
+                    req['reciever_uid'] == currentUserId)) {
+              requestStatus = req['status'];
+              break;
+            }
+          }
+        }
+  
+        // Set isActive based on request status.
+        String isActive;
+        if (requestStatus.isNotEmpty) {
+          if (requestStatus == 'pending') {
+            isActive = "You have a request, please wait for response";
+          } else if (requestStatus == 'accepted') {
+            isActive = "true";
+          } else {
+            isActive = "false";
+          }
+        } else {
+          isActive = "false";
+        }
+  
         return {
-          // For the new UI we generate an avatar based on the name.
-          'name': message['profile']['name'] ?? 'Unknown',
+          'name': message['name'] ?? 'Unknown',
           'text': message['message'],
-          // If the message's user_id matches the current user's id, mark it as 'send'
           'type': message['user_id'] == currentUserId ? 'send' : 'receive',
-          // For now, assume all chats are accepted.
-          'isAccept': 'true',
-          "created_at": formattedDateTime
+          'isActive': isActive,
+          'created_at': formattedDateTime,
+          'uid': otherId
         };
       }).toList();
     });
   }
+
 
   /// Listens for real-time updates on the messages table.
   void _listenForUpdates() {
@@ -115,23 +137,7 @@ class _ChatState extends State<Chat> {
     });
   }
 
-  /// Calculates the distance (in meters) between two geographic coordinates
-  /// using the Haversine formula.
-  double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const double R = 6371000; // Earth's radius in meters.
-    final double dLat = (lat2 - lat1) * (pi / 180);
-    final double dLon = (lon2 - lon1) * (pi / 180);
-    final double a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1 * (pi / 180)) *
-            cos(lat2 * (pi / 180)) *
-            sin(dLon / 2) *
-            sin(dLon / 2);
-    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return R * c;
-  }
-
-  /// Displays a request dialog when the chat isn't accepted.
-  void _showRequest(BuildContext context) {
+  void _showRequest(BuildContext context, String recipientUserId) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -140,11 +146,12 @@ class _ChatState extends State<Chat> {
         actions: [
           Row(
             children: [
-              Outerbutton(text: 'Cancel'),
+              const Outerbutton(text: 'Cancel'),
               const SizedBox(width: 10),
               Innerbutton(
-                function: () {
+                function: () async {
                   Navigator.of(context).pop();
+                  await _sendChatRequest(recipientUserId);
                 },
                 text: 'Request',
               )
@@ -152,6 +159,23 @@ class _ChatState extends State<Chat> {
           )
         ],
       ),
+    );
+  }
+
+  Future<void> _sendChatRequest(String recipientUserId) async {
+    final currentUserId = supabase.auth.currentUser!.id;
+    print("hi");
+    await supabase.from('requests').insert({
+      'requested_uid': currentUserId,
+      'reciever_uid': recipientUserId,
+      'status': 'pending',
+      'action_by': currentUserId,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
+
+    // Show confirmation message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Request sent successfully!")),
     );
   }
 
@@ -225,7 +249,6 @@ class _ChatState extends State<Chat> {
                     itemBuilder: (context, index) {
                       final chat = chats[index];
                       final bool isAccept = chat['isAccept'] == 'true';
-
                       return Chatcontainer(
                         type: chat['type'] as String,
                         // Instead of using a static image, we generate an avatar.
@@ -233,20 +256,18 @@ class _ChatState extends State<Chat> {
                         name: chat['name'] as String,
                         text: chat['text'] as String,
                         date: chat["created_at"] as String,
-                        // For now, always set isActive to true.
-                        isActive: true,
                         function: () {
                           if (!isAccept) {
-                            _showRequest(context);
+                            _showRequest(context, chat['uid']);
                           } else {
-                            // Navigator.of(context).push(
-                            //   MaterialPageRoute(
-                            //     builder: (builder) => Chatinterface(
-                            //       name: chat['name'] as String,
-                            //       avatar: buildAvatar(chat['name'] as String),
-                            //     ),
-                            //   ),
-                            // );
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (builder) => Chatinterface(
+                                  id: chat['uid'] as String,
+                                  avatar: buildAvatar(chat['name'] as String),
+                                ),
+                              ),
+                            );
                           }
                         },
                       );

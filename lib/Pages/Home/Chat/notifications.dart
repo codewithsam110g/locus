@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:locus/Pages/Home/Chat/chatInterface.dart';
 import 'package:locus/Pages/Home/Chat/chatRequested.dart';
 import 'package:locus/widgets/primaryWidget.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Notifications extends StatefulWidget {
   @override
@@ -14,58 +15,10 @@ class _NotificationsState extends State<Notifications>
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   List<Map<String, String>> filteredChats = [];
+  List<Map<String, String>> chatRequests = [];
+  List<Map<String, String>> activeChats = [];
 
-  final List<Map<String, String>> chatLists = [
-    {
-      'img': 'assets/img/mohan.jpg',
-      'name': 'Mohan',
-      'lmsg': 'Hello',
-      'id': 'mohan123',
-      'type': 'chats'
-    },
-    {
-      'img': 'assets/img/mohan.jpg',
-      'name': 'Nagendra',
-      'lmsg': 'Hey!',
-      'id': 'nagendra123',
-      'type': 'chats'
-    },
-    {
-      'img': 'assets/img/mohan.jpg',
-      'name': 'Bala',
-      'lmsg': 'Good Morning',
-      'id': 'bala123',
-      'type': 'request'
-    },
-    {
-      'img': 'assets/img/mohan.jpg',
-      'name': 'Veera',
-      'lmsg': 'How are you?',
-      'id': 'veera123',
-      'type': 'chats'
-    },
-    {
-      'img': 'assets/img/mohan.jpg',
-      'name': 'Venkatesh',
-      'lmsg': 'Need help?',
-      'id': 'venkatesh123',
-      'type': 'request'
-    },
-    {
-      'img': 'assets/img/mohan.jpg',
-      'name': 'Ponnuru',
-      'lmsg': 'Sure!',
-      'id': 'ponnuru123',
-      'type': 'request'
-    },
-    {
-      'img': 'assets/img/mohan.jpg',
-      'name': 'Venkat',
-      'lmsg': 'Call me',
-      'id': 'venkat123',
-      'type': 'chats'
-    },
-  ];
+  final supabase = Supabase.instance.client;
 
   @override
   void initState() {
@@ -74,8 +27,61 @@ class _NotificationsState extends State<Notifications>
     _searchController.addListener(() {
       _filterChats(_searchController.text);
     });
-    filteredChats = List.from(chatLists); // Initially display all chats
+
+    // Fetch requests from Supabase
+    _fetchChatRequests();
+    _fetchChats();
   }
+  
+  Future<void> _fetchChats() async {
+      final currentUserId = supabase.auth.currentUser?.id;
+      if (currentUserId == null) return;
+  
+      final response = await supabase
+          .from('chats')
+          .select()
+          .or('uid_1.eq.$currentUserId,uid_2.eq.$currentUserId')
+          .eq('is_active', true);
+  
+      if (response.isEmpty) return;
+  
+      Set<String> userIdsToFetch = {};
+      for (var chat in response) {
+        String otherUserId =
+            chat['uid_1'] == currentUserId ? chat['uid_2'] : chat['uid_1'];
+  
+        if (otherUserId.isNotEmpty) {
+          userIdsToFetch.add(otherUserId);
+        }
+      }
+  
+      Map<String, String> userNames = {};
+      if (userIdsToFetch.isNotEmpty) {
+        final profilesResponse = await supabase
+            .from('profile')
+            .select('user_id, name')
+            .or(userIdsToFetch.map((id) => 'user_id.eq.$id').join(','));
+  
+        for (var profile in profilesResponse) {
+          userNames[profile['user_id']] = profile['name'] ?? 'Unknown User';
+        }
+      }
+  
+      setState(() {
+        activeChats = response.map<Map<String, String>>((chat) {
+          String otherUserId =
+              chat['uid_1'] == currentUserId ? chat['uid_2'] : chat['uid_1'];
+  
+          return {
+            'id': otherUserId,
+            'name': userNames[otherUserId] ?? 'Unknown User',
+            'img': 'assets/img/mohan.jpg', // Replace with real profile image
+          };
+        }).toList();
+      });
+    }
+    
+  
 
   @override
   void dispose() {
@@ -87,8 +93,6 @@ class _NotificationsState extends State<Notifications>
   void _startSearch() {
     setState(() {
       _isSearching = true;
-      _searchController.clear();
-      filteredChats = List.from(chatLists); // Reset list
     });
   }
 
@@ -96,16 +100,73 @@ class _NotificationsState extends State<Notifications>
     setState(() {
       _isSearching = false;
       _searchController.clear();
-      filteredChats = List.from(chatLists); // Reset list
+    });
+  }
+
+  Future<void> _fetchChatRequests() async {
+    final currentUserId = supabase.auth.currentUser?.id;
+    if (currentUserId == null) return;
+
+    // Fetch chat requests where the current user is involved
+    final response = await supabase
+        .from('requests')
+        .select()
+        .or('reciever_uid.eq.$currentUserId,requested_uid.eq.$currentUserId')
+        .or('status.eq.pending,status.eq.terminated');
+
+    if (response.isEmpty) return;
+
+    // Extract unique user IDs to fetch names
+    Set<String> userIdsToFetch = {};
+    for (var req in response) {
+      String otherUserId = req['reciever_uid'] == currentUserId
+          ? req['requested_uid']
+          : req['reciever_uid'];
+
+      if (otherUserId != null && otherUserId.isNotEmpty) {
+        userIdsToFetch.add(otherUserId);
+      }
+    }
+
+    // Fetch user names from the profile table
+    Map<String, String> userNames = {};
+    if (userIdsToFetch.isNotEmpty) {
+      final profilesResponse = await supabase
+          .from('profile')
+          .select('user_id, name')
+          .or(userIdsToFetch.map((id) => 'user_id.eq.$id').join(','));
+      for (var profile in profilesResponse) {
+        userNames[profile['user_id']] = profile['name'] ?? 'Unknown User';
+      }
+    }
+
+    // Construct the chatRequests list with names
+    setState(() {
+      chatRequests = response.map<Map<String, String>>((req) {
+        String otherUserId = req['reciever_uid'] == currentUserId
+            ? req['requested_uid']
+            : req['reciever_uid'];
+
+        return {
+          'id': otherUserId,
+          'name': userNames[otherUserId] ??
+              'Unknown User', // Retrieved  from profile table
+          'lmsg': req['status'] ?? '',
+          'img':
+              'assets/img/mohan.jpg', // Default image, replace with actual user image
+          'type':
+              req['reciever_uid'] == currentUserId ? 'incoming' : 'outgoing',
+        };
+      }).toList();
     });
   }
 
   void _filterChats(String query) {
     setState(() {
       if (query.isEmpty) {
-        filteredChats = List.from(chatLists);
+        filteredChats = List.from(chatRequests);
       } else {
-        filteredChats = chatLists
+        filteredChats = chatRequests
             .where((chat) =>
                 chat['name']!.toLowerCase().contains(query.toLowerCase()) ||
                 chat['lmsg']!.toLowerCase().contains(query.toLowerCase()))
@@ -133,7 +194,7 @@ class _NotificationsState extends State<Notifications>
                   border: InputBorder.none,
                 ),
               )
-            : Padding(
+            : const Padding(
                 padding: EdgeInsets.only(left: 20.0),
                 child: Text(
                   'Messages',
@@ -147,32 +208,30 @@ class _NotificationsState extends State<Notifications>
               ),
         actions: [
           Padding(
-              padding: EdgeInsets.only(right: 20.0),
-              child: Row(
-                children: [
+            padding: const EdgeInsets.only(right: 20.0),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: _isSearching ? _stopSearch : _startSearch,
+                  child: Icon(
+                    _isSearching ? Icons.close : Icons.search,
+                    color: Colors.white,
+                  ),
+                ),
+                if (!_isSearching) const SizedBox(width: 20),
+                if (!_isSearching)
                   GestureDetector(
-                    onTap: _isSearching ? _stopSearch : _startSearch,
-                    child: Icon(
-                      _isSearching ? Icons.close : Icons.search,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Icon(
+                      Icons.close,
                       color: Colors.white,
                     ),
                   ),
-                  if (!_isSearching)
-                    SizedBox(
-                      width: 20,
-                    ),
-                  if (!_isSearching)
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: Icon(
-                        Icons.close,
-                        color: Colors.white,
-                      ),
-                    ),
-                ],
-              )),
+              ],
+            ),
+          ),
         ],
         bottom: (!_isSearching && _tabController != null)
             ? TabBar(
@@ -192,64 +251,49 @@ class _NotificationsState extends State<Notifications>
           : TabBarView(
               controller: _tabController,
               children: [
-                _buildChatList("chats"),
-                _buildChatList("request"),
+                _buildChatList(),
+                _buildRequestList(), // Updated request list
               ],
             ),
     );
   }
 
-  Widget _buildChatList(String type) {
-    final filteredList =
-        chatLists.where((chat) => chat['type'] == type).toList();
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 20.0, left: 20, right: 20),
-      child: filteredList.isNotEmpty
-          ? ListView.builder(
-              itemCount: filteredList.length,
-              itemBuilder: (context, index) {
-                final chat = filteredList[index];
-                final isRequest = chat['type'] == 'request';
-                return Primarywidget(
-                  img: chat['img']!,
-                  name: chat['name']!,
-                  lmsg: chat['lmsg']!,
-                  function: () {
-                    if (!isRequest) {
+  Widget _buildChatList() {
+      return Padding(
+        padding: const EdgeInsets.only(top: 20.0, left: 20, right: 20),
+        child: activeChats.isNotEmpty
+            ? ListView.builder(
+                itemCount: activeChats.length,
+                itemBuilder: (context, index) {
+                  final chat = activeChats[index];
+                  return Primarywidget(
+                    img: chat['img']!,
+                    name: chat['name']!,
+                    lmsg: 'Tap to chat',
+                    function: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (builder) => Chatinterface(
-                            name: chat['name']!,
-                            img: chat['img']!,
+                            id: chat['id']!,
+                            avatar: Image.asset(chat['img']!),
                           ),
                         ),
                       );
-                    } else {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (builder) => Chatforrequested(
-                            name: chat['name']!,
-                            img: chat['img']!,
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                );
-              },
-            )
-          : const Center(
-              child: Text(
-                "No Chats Available",
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey),
+                    },
+                  );
+                },
+              )
+            : const Center(
+                child: Text(
+                  "No Active Chats",
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey),
+                ),
               ),
-            ),
-    );
-  }
+      );
+    }
 
   Widget _buildSearchResults() {
     return Padding(
@@ -267,8 +311,8 @@ class _NotificationsState extends State<Notifications>
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (builder) => Chatinterface(
-                          name: chat['name']!,
-                          img: chat['img']!,
+                          id: chat['id']!,
+                          avatar: Image.asset(chat['img']!),
                         ),
                       ),
                     );
@@ -285,6 +329,104 @@ class _NotificationsState extends State<Notifications>
                     color: Colors.grey),
               ),
             ),
+    );
+  }
+
+  Widget _buildRequestList() {
+    final incomingRequests =
+        chatRequests.where((chat) => chat['type'] == 'incoming').toList();
+    final outgoingRequests =
+        chatRequests.where((chat) => chat['type'] == 'outgoing').toList();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 20.0, left: 20, right: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // **Incoming Requests**
+          if (incomingRequests.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Incoming Requests",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: incomingRequests.length,
+                  itemBuilder: (context, index) {
+                    final chat = incomingRequests[index];
+                    return Primarywidget(
+                      img: chat['img']!,
+                      name: chat['name']!,
+                      lmsg: "Status: ${chat['lmsg']}",
+                      function: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (builder) => Chatforrequested(
+                              id: chat['id']!,
+                              img: chat['img']!,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            )
+          else
+            const Center(
+              child: Text(
+                "No Incoming Requests",
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey),
+              ),
+            ),
+
+          const SizedBox(height: 20), // Spacing
+
+          // **Outgoing Requests**
+          if (outgoingRequests.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "My Requests",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: outgoingRequests.length,
+                  itemBuilder: (context, index) {
+                    final chat = outgoingRequests[index];
+                    return Primarywidget(
+                      img: chat['img']!,
+                      name: chat['name']!,
+                      lmsg: "Status: ${chat['lmsg']}",
+                      function: () {}, // Add functionality if needed
+                    );
+                  },
+                ),
+              ],
+            )
+          else
+            const Center(
+              child: Text(
+                "No Outgoing Requests",
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -9,7 +9,7 @@ class Innerbutton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ElevatedButton(
       onPressed: () {
-        function;
+        function();
       },
       style: ButtonStyle(
         elevation: MaterialStateProperty.all(0),

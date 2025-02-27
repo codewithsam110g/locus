@@ -7,7 +7,6 @@ class Chatcontainer extends StatefulWidget {
   final String name;
   final VoidCallback function;
   final String type;
-  final bool isActive;
   final String date;
 
   const Chatcontainer({
@@ -17,7 +16,6 @@ class Chatcontainer extends StatefulWidget {
     required this.name,
     required this.function,
     required this.type,
-    required this.isActive,
     required this.date
   }) : super(key: key);
 
@@ -127,6 +125,4 @@ class _ChatcontainerState extends State<Chatcontainer> {
     );
   }
 
-  /// Wraps the provided avatar widget in a Stack and overlays an active indicator
-  /// (a small green dot) if [widget.isActive] is true.
 }
