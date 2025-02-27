@@ -38,12 +38,46 @@ class _ExploreState extends State<Explore> {
   void initState() {
     super.initState();
     _setLocation(); // Fetch the user's current location from their profile.
-    setupRealtimeListener();
+    setupRealtimeListeners(); // Note: Changed to plural to setup multiple listeners
     _fetchData();
     _focusNode.addListener(() {
       setState(() {
         isOpen = _focusNode.hasFocus;
       });
+    });
+  }
+  
+  /// Sets up realtime listeners for both community and profile tables.
+  void setupRealtimeListeners() {
+    // Listen for changes to the community table
+    supabase
+        .from('community')
+        .stream(primaryKey: ['id'])
+        .listen((List<Map<String, dynamic>> data) {
+      updateExploreList(data);
+    });
+  
+    // Listen for changes to the current user's profile
+    final userId = supabase.auth.currentUser!.id;
+    supabase
+        .from('profile')
+        .stream(primaryKey: ['user_id'])
+        .eq('user_id', userId)
+        .listen((List<Map<String, dynamic>> data) {
+      if (data.isNotEmpty) {
+        // Check if range has changed
+        final newRange = double.parse(data[0]["range"].toString());
+        if (newRange != distanceThreshold) {
+          setState(() {
+            // Update the distance threshold with the new range
+            distanceThreshold = newRange;
+            currentUserLat = data[0]["last_loc"]["lat"] as double;
+            currentUserLong = data[0]["last_loc"]["long"] as double;
+          });
+          // Refresh data with the new range
+          _fetchData();
+        }
+      }
     });
   }
 
@@ -256,24 +290,27 @@ class _ExploreState extends State<Explore> {
                         ),
                       ),
                     Expanded(
-                      child: ListView.builder(
-                        itemCount: getFilteredExploreList().length,
-                        itemBuilder: (context, index) {
-                          final list = getFilteredExploreList()[index];
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.of(context)
-                                  .push(MaterialPageRoute(builder: (context) {
-                                return Userview(id: list['com_id']);
-                              }));
-                            },
-                            child: Explorecontainer(
-                              name: list['name'],
-                              description: list['description'],
-                              img: list['img'],
-                            ),
-                          );
-                        },
+                      child: Padding(
+                        padding: const EdgeInsets.only(top:8.0),
+                        child: ListView.builder(
+                          itemCount: getFilteredExploreList().length,
+                          itemBuilder: (context, index) {
+                            final list = getFilteredExploreList()[index];
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.of(context)
+                                    .push(MaterialPageRoute(builder: (context) {
+                                  return Userview(id: list['com_id']);
+                                }));
+                              },
+                              child: Explorecontainer(
+                                name: list['name'],
+                                description: list['description'],
+                                img: list['img'],
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ],

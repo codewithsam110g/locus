@@ -17,6 +17,7 @@ class Chat extends StatefulWidget {
 class _ChatState extends State<Chat> {
   final SupabaseClient supabase = Supabase.instance.client;
   List<Map<String, dynamic>> chats = [];
+  bool isLoading = false;
 
   // Default current user's location values.
   double currentUserLat = 16.7930;
@@ -31,6 +32,7 @@ class _ChatState extends State<Chat> {
     _setLocation();
     _fetchMessages();
     _listenForUpdates();
+    _listenForLocationUpdates();
   }
 
   /// Retrieves the current user's location settings from their profile.
@@ -49,86 +51,122 @@ class _ChatState extends State<Chat> {
     });
   }
 
-  Future<void> _fetchMessages() async {
-    final currentUserId = supabase.auth.currentUser!.id;
-  
-    // Fetch current user location & range
-    final userData = await supabase
+  /// Listens for real-time updates on the user's location in profile table
+  void _listenForLocationUpdates() {
+    final userId = supabase.auth.currentUser!.id;
+    
+    supabase
         .from('profile')
-        .select("last_loc, range")
-        .eq("user_id", currentUserId)
-        .single();
-  
-    final double currentUserLat =
-        (userData["last_loc"]["lat"] as num).toDouble();
-    final double currentUserLong =
-        (userData["last_loc"]["long"] as num).toDouble();
-    final double distanceThreshold = (userData["range"] as num).toDouble();
-  
-    // Call stored procedure in Supabase to get nearby messages
-    final response = await supabase.rpc('get_nearby_messages', params: {
-      'lat': currentUserLat,
-      'long': currentUserLong,
-      'max_distance': distanceThreshold
-    });
-  
-    // Fetch request data for the current user (involving any other user)
-    final requestsData = await supabase
-        .from('requests')
-        .select('requested_uid, reciever_uid, status')
-        .or('requested_uid.eq.$currentUserId,reciever_uid.eq.$currentUserId');
-  
-    // Update state with messages and determine isActive status using requests table
-    setState(() {
-      chats = response.map<Map<String, dynamic>>((message) {
-        DateTime dateTime = DateTime.parse(message["created_at"]).toLocal();
-        String formattedDateTime =
-            "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} "
-            "${dateTime.day.toString().padLeft(2, '0')}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.year}";
-  
-        // The other user's id (person we want to chat with)
-        String otherId = message['user_id'];
-  
-        // Determine the request status between currentUserId and otherId.
-        String requestStatus = "";
-        if (requestsData != null) {
-          for (var req in requestsData) {
-            if ((req['requested_uid'] == currentUserId &&
-                    req['reciever_uid'] == otherId) ||
-                (req['requested_uid'] == otherId &&
-                    req['reciever_uid'] == currentUserId)) {
-              requestStatus = req['status'];
-              break;
-            }
-          }
+        .stream(primaryKey: ['user_id'])
+        .eq('user_id', userId)
+        .listen((List<Map<String, dynamic>> data) {
+      if (data.isNotEmpty) {
+        final userData = data.first;
+        final newLat = userData["last_loc"]["lat"] as double;
+        final newLong = userData["last_loc"]["long"] as double;
+        final newRange = double.parse(userData["range"].toString());
+        
+        // Check if location or range has changed
+        if (newLat != currentUserLat || 
+            newLong != currentUserLong || 
+            newRange != distanceThreshold) {
+          setState(() {
+            currentUserLat = newLat;
+            currentUserLong = newLong;
+            distanceThreshold = newRange;
+          });
+          
+          // Reload messages when location changes
+          _fetchMessages();
         }
-  
-        // Set isActive based on request status.
-        String isActive;
-        if (requestStatus.isNotEmpty) {
-          if (requestStatus == 'pending') {
-            isActive = "You have a request, please wait for response";
-          } else if (requestStatus == 'accepted') {
-            isActive = "true";
-          } else {
-            isActive = "false";
-          }
-        } else {
-          isActive = "false";
-        }
-  
-        return {
-          'name': message['name'] ?? 'Unknown',
-          'text': message['message'],
-          'type': message['user_id'] == currentUserId ? 'send' : 'receive',
-          'isActive': isActive,
-          'created_at': formattedDateTime,
-          'uid': otherId
-        };
-      }).toList();
+      }
     });
   }
 
+  Future<void> _fetchMessages() async {
+    setState(() {
+      isLoading = true;
+    });
+    
+    try {
+      final currentUserId = supabase.auth.currentUser!.id;
+
+      // Call stored procedure in Supabase to get nearby messages
+      // Using the current location values stored in the state
+      final response = await supabase.rpc('get_nearby_messages', params: {
+        'lat': currentUserLat,
+        'long': currentUserLong,
+        'max_distance': distanceThreshold
+      });
+
+      // Fetch request data for the current user (involving any other user)
+      final requestsData = await supabase
+          .from('requests')
+          .select('requested_uid, reciever_uid, status')
+          .or('requested_uid.eq.$currentUserId,reciever_uid.eq.$currentUserId');
+
+      // Update state with messages and determine isActive status using requests table
+      if (mounted) {
+        setState(() {
+          chats = response.map<Map<String, dynamic>>((message) {
+            DateTime dateTime = DateTime.parse(message["created_at"]).toLocal();
+            String formattedDateTime =
+                "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} "
+                "${dateTime.day.toString().padLeft(2, '0')}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.year}";
+            // The other user's id (person we want to chat with)
+            String otherId = message['user_id'];
+
+            // Determine the request status between currentUserId and otherId.
+            String requestStatus = "";
+            if (requestsData != null) {
+              for (var req in requestsData) {
+                if ((req['requested_uid'] == currentUserId &&
+                        req['reciever_uid'] == otherId) ||
+                    (req['requested_uid'] == otherId &&
+                        req['reciever_uid'] == currentUserId)) {
+                  requestStatus = req['status'];
+                  break;
+                }
+              }
+            }
+
+            // Set isActive based on request status.
+            String isActive;
+            if (requestStatus.isNotEmpty) {
+              if (requestStatus == 'pending') {
+                isActive = "pending";
+              } else if (requestStatus == 'accept') {
+                isActive = "true";
+              } else {
+                isActive = "false";
+              }
+            } else {
+              isActive = "false";
+            }
+
+            return {
+              'name': message['name'] ?? 'Unknown',
+              'text': message['message'],
+              'type': message['user_id'] == currentUserId ? 'send' : 'receive',
+              'isActive': isActive,
+              'created_at': formattedDateTime,
+              'uid': otherId
+            };
+          }).toList();
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error fetching messages: ${e.toString()}")),
+        );
+      }
+    }
+  }
 
   /// Listens for real-time updates on the messages table.
   void _listenForUpdates() {
@@ -164,7 +202,6 @@ class _ChatState extends State<Chat> {
 
   Future<void> _sendChatRequest(String recipientUserId) async {
     final currentUserId = supabase.auth.currentUser!.id;
-    print("hi");
     await supabase.from('requests').insert({
       'requested_uid': currentUserId,
       'reciever_uid': recipientUserId,
@@ -174,13 +211,15 @@ class _ChatState extends State<Chat> {
     });
 
     // Show confirmation message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Request sent successfully!")),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Request sent successfully!")),
+      );
+    }
   }
 
   /// Builds a circular avatar widget with a background color chosen from a fixed set
-  /// (based on the sender’s name hash) and displays the first character of the name.
+  /// (based on the sender's name hash) and displays the first character of the name.
   Widget buildAvatar(String name) {
     final List<Color> colors = [
       Colors.red,
@@ -220,6 +259,34 @@ class _ChatState extends State<Chat> {
           ),
         ),
         actions: [
+          // Refresh button
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: GestureDetector(
+              onTap: () {
+                if (!isLoading) {
+                  _fetchMessages();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Refreshing messages...")),
+                  );
+                }
+              },
+              child: isLoading 
+                ? const SizedBox(
+                    width: 20, 
+                    height: 20, 
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    )
+                  )
+                : const Icon(
+                    Icons.refresh,
+                    color: Colors.white,
+                  ),
+            ),
+          ),
+          // Notifications button
           Padding(
             padding: const EdgeInsets.only(right: 20.0),
             child: GestureDetector(
@@ -244,35 +311,52 @@ class _ChatState extends State<Chat> {
             child: Column(
               children: [
                 Expanded(
-                  child: ListView.builder(
-                    itemCount: chats.length,
-                    itemBuilder: (context, index) {
-                      final chat = chats[index];
-                      final bool isAccept = chat['isAccept'] == 'true';
-                      return Chatcontainer(
-                        type: chat['type'] as String,
-                        // Instead of using a static image, we generate an avatar.
-                        avatar: buildAvatar(chat['name'] as String),
-                        name: chat['name'] as String,
-                        text: chat['text'] as String,
-                        date: chat["created_at"] as String,
-                        function: () {
-                          if (!isAccept) {
-                            _showRequest(context, chat['uid']);
-                          } else {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (builder) => Chatinterface(
-                                  id: chat['uid'] as String,
-                                  avatar: buildAvatar(chat['name'] as String),
-                                ),
+                  child: isLoading && chats.isEmpty
+                      ? const Center(
+                          child: CircularProgressIndicator(),
+                        )
+                      : chats.isEmpty
+                          ? const Center(
+                              child: Text('No messages nearby. Try adjusting your range.'),
+                            )
+                          : RefreshIndicator(
+                              onRefresh: () async {
+                                await _fetchMessages();
+                              },
+                              child: ListView.builder(
+                                itemCount: chats.length,
+                                itemBuilder: (context, index) {
+                                  final chat = chats[index];
+                                  final bool isAccept = chat['isActive'] == "true";
+                                  return Chatcontainer(
+                                    type: chat['type'] as String,
+                                    // Instead of using a static image, we generate an avatar.
+                                    avatar: buildAvatar(chat['name'] as String),
+                                    name: chat['name'] as String,
+                                    text: chat['text'] as String,
+                                    date: chat["created_at"] as String,
+                                    function: () {
+                                      if (chat['isActive'] == "pending") {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text("You have a pending Request with the user!")),
+                                        );
+                                      } else if (!isAccept) {
+                                        _showRequest(context, chat['uid']);
+                                      } else {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (builder) => Chatinterface(
+                                              id: chat['uid'] as String,
+                                              avatar: buildAvatar(chat['name'] as String),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  );
+                                },
                               ),
-                            );
-                          }
-                        },
-                      );
-                    },
-                  ),
+                            ),
                 ),
               ],
             ),

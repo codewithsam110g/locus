@@ -3,6 +3,7 @@ import 'package:locus/Pages/Home/Chat/chatInterface.dart';
 import 'package:locus/Pages/Home/Chat/chatRequested.dart';
 import 'package:locus/widgets/primaryWidget.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 
 class Notifications extends StatefulWidget {
   @override
@@ -20,6 +21,9 @@ class _NotificationsState extends State<Notifications>
 
   final supabase = Supabase.instance.client;
 
+  // Stream subscriptions to manage realtime listeners
+  List<StreamSubscription> _subscriptions = [];
+
   @override
   void initState() {
     super.initState();
@@ -28,63 +32,103 @@ class _NotificationsState extends State<Notifications>
       _filterChats(_searchController.text);
     });
 
-    // Fetch requests from Supabase
+    // Fetch initial data
     _fetchChatRequests();
     _fetchChats();
+
+    // Setup realtime listeners
+    _setupRealtimeListeners();
   }
-  
+
+  void _setupRealtimeListeners() {
+    final currentUserId = supabase.auth.currentUser?.id;
+    if (currentUserId == null) return;
+
+    // Listen for changes in the requests table
+    final requestsSubscription =
+        supabase.from('requests').stream(primaryKey: ['id']).listen((data) {
+      _fetchChatRequests();
+    });
+
+    // Listen for changes in the chats table
+    final chatsSubscription =
+        supabase.from('chats').stream(primaryKey: ['id']).listen((data) {
+      _fetchChats();
+    });
+
+    // Listen for changes in the profile table (for name updates)
+    final profileSubscription =
+        supabase.from('profile').stream(primaryKey: ['user_id']).listen((data) {
+      // Refresh both chats and requests to update names
+      _fetchChats();
+      _fetchChatRequests();
+    });
+
+    // Store subscriptions for cleanup
+    _subscriptions
+        .addAll([requestsSubscription, chatsSubscription, profileSubscription]);
+  }
+
   Future<void> _fetchChats() async {
-      final currentUserId = supabase.auth.currentUser?.id;
-      if (currentUserId == null) return;
-  
-      final response = await supabase
-          .from('chats')
-          .select()
-          .or('uid_1.eq.$currentUserId,uid_2.eq.$currentUserId')
-          .eq('is_active', true);
-  
-      if (response.isEmpty) return;
-  
-      Set<String> userIdsToFetch = {};
-      for (var chat in response) {
+    final currentUserId = supabase.auth.currentUser?.id;
+    if (currentUserId == null) return;
+
+    final response = await supabase
+        .from('chats')
+        .select()
+        .or('uid_1.eq.$currentUserId,uid_2.eq.$currentUserId')
+        .eq('is_active', true);
+
+    if (response.isEmpty) {
+      setState(() {
+        activeChats = [];
+      });
+      return;
+    }
+
+    Set<String> userIdsToFetch = {};
+    for (var chat in response) {
+      String otherUserId =
+          chat['uid_1'] == currentUserId ? chat['uid_2'] : chat['uid_1'];
+
+      if (otherUserId.isNotEmpty) {
+        userIdsToFetch.add(otherUserId);
+      }
+    }
+
+    Map<String, String> userNames = {};
+    if (userIdsToFetch.isNotEmpty) {
+      final profilesResponse = await supabase
+          .from('profile')
+          .select('user_id, name')
+          .or(userIdsToFetch.map((id) => 'user_id.eq.$id').join(','));
+
+      for (var profile in profilesResponse) {
+        userNames[profile['user_id']] = profile['name'] ?? 'Unknown User';
+      }
+    }
+
+    setState(() {
+      activeChats = response.map<Map<String, String>>((chat) {
         String otherUserId =
             chat['uid_1'] == currentUserId ? chat['uid_2'] : chat['uid_1'];
-  
-        if (otherUserId.isNotEmpty) {
-          userIdsToFetch.add(otherUserId);
-        }
-      }
-  
-      Map<String, String> userNames = {};
-      if (userIdsToFetch.isNotEmpty) {
-        final profilesResponse = await supabase
-            .from('profile')
-            .select('user_id, name')
-            .or(userIdsToFetch.map((id) => 'user_id.eq.$id').join(','));
-  
-        for (var profile in profilesResponse) {
-          userNames[profile['user_id']] = profile['name'] ?? 'Unknown User';
-        }
-      }
-  
-      setState(() {
-        activeChats = response.map<Map<String, String>>((chat) {
-          String otherUserId =
-              chat['uid_1'] == currentUserId ? chat['uid_2'] : chat['uid_1'];
-  
-          return {
-            'id': otherUserId,
-            'name': userNames[otherUserId] ?? 'Unknown User',
-            'img': 'assets/img/mohan.jpg', // Replace with real profile image
-          };
-        }).toList();
-      });
-    }
-    
-  
+
+        return {
+          'id': otherUserId,
+          'chat_id': chat['id'].toString(),
+          'name': userNames[otherUserId] ?? 'Unknown User',
+          'img': 'assets/img/mohan.jpg', // Replace with real profile image
+        };
+      }).toList();
+    });
+  }
 
   @override
   void dispose() {
+    // Clean up all stream subscriptions
+    for (var subscription in _subscriptions) {
+      subscription.cancel();
+    }
     _tabController?.dispose();
     _searchController.dispose();
     super.dispose();
@@ -114,7 +158,15 @@ class _NotificationsState extends State<Notifications>
         .or('reciever_uid.eq.$currentUserId,requested_uid.eq.$currentUserId')
         .or('status.eq.pending,status.eq.terminated');
 
-    if (response.isEmpty) return;
+    if (response.isEmpty) {
+      setState(() {
+        chatRequests = [];
+        if (_searchController.text.isNotEmpty) {
+          _filterChats(_searchController.text);
+        }
+      });
+      return;
+    }
 
     // Extract unique user IDs to fetch names
     Set<String> userIdsToFetch = {};
@@ -141,24 +193,30 @@ class _NotificationsState extends State<Notifications>
     }
 
     // Construct the chatRequests list with names
-    setState(() {
-      chatRequests = response.map<Map<String, String>>((req) {
-        String otherUserId = req['reciever_uid'] == currentUserId
-            ? req['requested_uid']
-            : req['reciever_uid'];
+    if (mounted) {
+      setState(() {
+        chatRequests = response.map<Map<String, String>>((req) {
+          String otherUserId = req['reciever_uid'] == currentUserId
+              ? req['requested_uid']
+              : req['reciever_uid'];
 
-        return {
-          'id': otherUserId,
-          'name': userNames[otherUserId] ??
-              'Unknown User', // Retrieved  from profile table
-          'lmsg': req['status'] ?? '',
-          'img':
-              'assets/img/mohan.jpg', // Default image, replace with actual user image
-          'type':
-              req['reciever_uid'] == currentUserId ? 'incoming' : 'outgoing',
-        };
-      }).toList();
-    });
+          return {
+            'id': otherUserId,
+            'request_id': req['id'].toString(),
+            'name': userNames[otherUserId] ?? 'Unknown User',
+            'lmsg': req['status'] ?? '',
+            'img': 'assets/img/mohan.jpg', // Default image
+            'type':
+                req['reciever_uid'] == currentUserId ? 'incoming' : 'outgoing',
+          };
+        }).toList();
+
+        // Update filtered chats if search is active
+        if (_searchController.text.isNotEmpty) {
+          _filterChats(_searchController.text);
+        }
+      });
+    }
   }
 
   void _filterChats(String query) {
@@ -252,48 +310,48 @@ class _NotificationsState extends State<Notifications>
               controller: _tabController,
               children: [
                 _buildChatList(),
-                _buildRequestList(), // Updated request list
+                _buildRequestList(),
               ],
             ),
     );
   }
 
   Widget _buildChatList() {
-      return Padding(
-        padding: const EdgeInsets.only(top: 20.0, left: 20, right: 20),
-        child: activeChats.isNotEmpty
-            ? ListView.builder(
-                itemCount: activeChats.length,
-                itemBuilder: (context, index) {
-                  final chat = activeChats[index];
-                  return Primarywidget(
-                    img: chat['img']!,
-                    name: chat['name']!,
-                    lmsg: 'Tap to chat',
-                    function: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (builder) => Chatinterface(
-                            id: chat['id']!,
-                            avatar: Image.asset(chat['img']!),
-                          ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 20.0, left: 20, right: 20),
+      child: activeChats.isNotEmpty
+          ? ListView.builder(
+              itemCount: activeChats.length,
+              itemBuilder: (context, index) {
+                final chat = activeChats[index];
+                return Primarywidget(
+                  img: chat['img']!,
+                  name: chat['name']!,
+                  lmsg: 'Tap to chat',
+                  function: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (builder) => Chatinterface(
+                          id: chat['id']!,
+                          avatar: Image.asset(chat['img']!),
                         ),
-                      );
-                    },
-                  );
-                },
-              )
-            : const Center(
-                child: Text(
-                  "No Active Chats",
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey),
-                ),
+                      ),
+                    );
+                  },
+                );
+              },
+            )
+          : const Center(
+              child: Text(
+                "No Active Chats",
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey),
               ),
-      );
-    }
+            ),
+    );
+  }
 
   Widget _buildSearchResults() {
     return Padding(
@@ -340,92 +398,100 @@ class _NotificationsState extends State<Notifications>
 
     return Padding(
       padding: const EdgeInsets.only(top: 20.0, left: 20, right: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // **Incoming Requests**
-          if (incomingRequests.isNotEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Incoming Requests",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: incomingRequests.length,
-                  itemBuilder: (context, index) {
-                    final chat = incomingRequests[index];
-                    return Primarywidget(
-                      img: chat['img']!,
-                      name: chat['name']!,
-                      lmsg: "Status: ${chat['lmsg']}",
-                      function: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (builder) => Chatforrequested(
-                              id: chat['id']!,
-                              img: chat['img']!,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // **Incoming Requests**
+            if (incomingRequests.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Incoming Requests",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: incomingRequests.length,
+                    itemBuilder: (context, index) {
+                      final chat = incomingRequests[index];
+                      return Primarywidget(
+                        img: chat['img']!,
+                        name: chat['name']!,
+                        lmsg: "Status: ${chat['lmsg']}",
+                        function: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (builder) => Chatforrequested(
+                                id: chat['id']!,
+                                img: chat['img']!,
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              )
+            else
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Text(
+                    "No Incoming Requests",
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey),
+                  ),
                 ),
-              ],
-            )
-          else
-            const Center(
-              child: Text(
-                "No Incoming Requests",
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey),
               ),
-            ),
 
-          const SizedBox(height: 20), // Spacing
+            const SizedBox(height: 20),
 
-          // **Outgoing Requests**
-          if (outgoingRequests.isNotEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "My Requests",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // **Outgoing Requests**
+            if (outgoingRequests.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "My Requests",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: outgoingRequests.length,
+                    itemBuilder: (context, index) {
+                      final chat = outgoingRequests[index];
+                      return Primarywidget(
+                        img: chat['img']!,
+                        name: chat['name']!,
+                        lmsg: "Status: ${chat['lmsg']}",
+                        function: () {}, // Add functionality if needed
+                      );
+                    },
+                  ),
+                ],
+              )
+            else
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Text(
+                    "No Outgoing Requests",
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey),
+                  ),
                 ),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: outgoingRequests.length,
-                  itemBuilder: (context, index) {
-                    final chat = outgoingRequests[index];
-                    return Primarywidget(
-                      img: chat['img']!,
-                      name: chat['name']!,
-                      lmsg: "Status: ${chat['lmsg']}",
-                      function: () {}, // Add functionality if needed
-                    );
-                  },
-                ),
-              ],
-            )
-          else
-            const Center(
-              child: Text(
-                "No Outgoing Requests",
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

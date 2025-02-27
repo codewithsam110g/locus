@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For formatting timestamps
 import 'package:locus/widgets/chat_bubble_user.dart';
@@ -22,12 +23,12 @@ class _ChatinterfaceState extends State<Chatinterface> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool isTyping = false;
-  List<Map<String, dynamic>> receivedMessages = [];
-  List<Map<String, dynamic>> sentMessages = [];
+  List<Map<String, dynamic>> messages = []; // Combined messages list
   String? userName;
   int chatId = -1;
   bool isLoading = true;
   final supabase = Supabase.instance.client;
+  StreamSubscription? _messagesSubscription;
 
   @override
   void initState() {
@@ -38,6 +39,15 @@ class _ChatinterfaceState extends State<Chatinterface> {
       });
     });
     fetchUserName();
+  }
+
+  @override
+  void dispose() {
+    // Cancel the stream subscription when the widget is disposed
+    _messagesSubscription?.cancel();
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> fetchUserName() async {
@@ -73,8 +83,9 @@ class _ChatinterfaceState extends State<Chatinterface> {
       if (chatResponse != null && chatResponse['id'] != null) {
         setState(() {
           chatId = chatResponse['id'];
-          fetchMessages();
         });
+        await fetchMessages();
+        _subscribeToMessages();
       } else {
         print("Chat not found between users.");
       }
@@ -85,6 +96,20 @@ class _ChatinterfaceState extends State<Chatinterface> {
     setState(() {
       isLoading = false;
     });
+  }
+
+  void _subscribeToMessages() {
+    if (chatId == -1) return;
+
+    // Use the stream method to listen for real-time updates
+    _messagesSubscription = supabase
+        .from('private_messages')
+        .stream(primaryKey: ['id'])
+        .eq('chat_id', chatId)
+        .listen((data) {
+          // When new data arrives, refresh messages
+          fetchMessages();
+        });
   }
 
   Future<void> fetchMessages() async {
@@ -102,28 +127,23 @@ class _ChatinterfaceState extends State<Chatinterface> {
           .order("created_at", ascending: true);
 
       if (data != null) {
-        List<Map<String, dynamic>> received = [];
-        List<Map<String, dynamic>> sent = [];
+        List<Map<String, dynamic>> allMessages = [];
 
         for (var message in data) {
           final formattedTime = formatTimestamp(message['created_at']);
+          final isCurrentUser = message['sent_by'] == currentUserId;
 
-          if (message['sent_by'] == currentUserId) {
-            sent.add({
-              "message": message['message'],
-              "time": formattedTime,
-            });
-          } else {
-            received.add({
-              "message": message['message'],
-              "time": formattedTime,
-            });
-          }
+          allMessages.add({
+            "message": message['message'],
+            "time": formattedTime,
+            "isCurrentUser": isCurrentUser,
+            "timestamp":
+                message['created_at'], // Keep original timestamp for sorting
+          });
         }
 
         setState(() {
-          receivedMessages = received;
-          sentMessages = sent;
+          messages = allMessages;
         });
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -155,17 +175,10 @@ class _ChatinterfaceState extends State<Chatinterface> {
         "created_at": timestamp,
       });
 
-      setState(() {
-        sentMessages.add({
-          "message": messageText,
-          "time": formatTimestamp(timestamp),
-        });
-        _controller.clear();
-      });
+      // Clear the text field
+      _controller.clear();
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToBottom();
-      });
+      // No need to manually update messages as the stream will trigger fetchMessages()
     } catch (error) {
       print("Error sending message: $error");
     }
@@ -231,17 +244,18 @@ class _ChatinterfaceState extends State<Chatinterface> {
               padding: const EdgeInsets.all(8),
               child: ListView.builder(
                 controller: _scrollController,
-                itemCount: receivedMessages.length + sentMessages.length,
+                itemCount: messages.length,
                 itemBuilder: (context, index) {
-                  if (index < receivedMessages.length) {
-                    return ChatBubbleUser(
-                      message: receivedMessages[index]['message'],
-                      time: receivedMessages[index]['time'],
+                  final message = messages[index];
+                  if (message['isCurrentUser']) {
+                    return ChatBubble(
+                      message: message['message'],
+                      time: message['time'],
                     );
                   } else {
-                    return ChatBubble(
-                      message: sentMessages[index - receivedMessages.length]['message'],
-                      time: sentMessages[index - receivedMessages.length]['time'],
+                    return ChatBubbleUser(
+                      message: message['message'],
+                      time: message['time'],
                     );
                   }
                 },

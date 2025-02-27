@@ -42,7 +42,7 @@ class _ChatforrequestedState extends State<Chatforrequested> {
   Future<void> _acceptChatRequest() async {
     final currentUserId = supabase.auth.currentUser?.id;
     if (currentUserId == null) return;
-  
+
     try {
       // Step 1: Update request status to "accept"
       await supabase
@@ -52,14 +52,15 @@ class _ChatforrequestedState extends State<Chatforrequested> {
             'reciever_uid': currentUserId,
             'requested_uid': widget.id
           });
-  
+
       // Step 2: Insert a new chat entry (no sorting needed)
       await supabase.from('chats').insert({
         'uid_1': currentUserId,
         'uid_2': widget.id,
         'is_active': true
       });
-  
+
+      Navigator.of(context).pop();
       // Navigate to chat interface
       Navigator.of(context).push(
         MaterialPageRoute(
@@ -76,7 +77,7 @@ class _ChatforrequestedState extends State<Chatforrequested> {
       );
     }
   }
-  
+
   Future<void> _fetchUserName() async {
     final response = await supabase
         .from('profile')
