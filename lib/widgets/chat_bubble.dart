@@ -43,7 +43,7 @@ class ChatBubble extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    margin: const EdgeInsets.only(left: 40), // Space for the timestamp
+                    margin: const EdgeInsets.only(left: 60), // Space for the timestamp
                     constraints: BoxConstraints(
                       maxWidth: screenWidth * 0.7, // Prevents overflow
                     ),
@@ -61,7 +61,7 @@ class ChatBubble extends StatelessWidget {
                         Padding(
                           padding: multiLineText
                               ? EdgeInsets.zero
-                              : const EdgeInsets.only(right: 50.0),
+                              : const EdgeInsets.only(right: 60.0),
                           child: Text(
                             message,
                             style: textStyle,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:locus/Pages/Home/mainScreen.dart';
+import 'package:locus/Pages/LoginRegister/ForgetPassord/forgetPassword.dart';
 import 'package:locus/Pages/LoginRegister/register/registerMain.dart';
 import 'package:locus/widgets/button.dart';
 import 'package:locus/widgets/inputfeilds.dart';
@@ -145,6 +146,30 @@ class _LoginState extends State<Login> {
                         _passwordError!,
                         style: const TextStyle(color: Colors.red, fontSize: 12),
                       ),
+                    SizedBox(
+                      height: 10,
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        onTap: () {
+                          print("onTap");
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (builder) => ForgetPassword(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Forgot Password?',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            decoration: TextDecoration.underline,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
                     SizedBox(
                       height: 40,
                     ),

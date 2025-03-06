@@ -30,8 +30,9 @@ class _ChatcontainerState extends State<Chatcontainer> {
     final bool isSend = widget.type == 'send';
 
     // For sent messages, use a green bubble; for received messages, use white.
-    final bubbleColor = isSend ? Colors.green[300] : Colors.white;
-    final textColor = isSend ? Colors.white : Colors.black;
+    final bubbleColor = isSend ? Theme.of(context).colorScheme.secondary : Colors.white;
+    final textColor = isSend ? Colors.black : Colors.black;
+    final dateColor = isSend ? Colors.black : Colors.grey;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10.0, right: 20),
@@ -90,7 +91,7 @@ class _ChatcontainerState extends State<Chatcontainer> {
                         widget.date,
                         style: TextStyle(
                           fontSize: 15,
-                          color: Colors.grey,
+                          color: dateColor,
                         ),
                       ),
                       Row(

@@ -24,14 +24,7 @@ class Button1 extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors,
           borderRadius: BorderRadius.circular(6),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3), // Shadow color
-              spreadRadius: 2, // Spread of the shadow
-              blurRadius: 8, // Blur radius of the shadow
-              offset: Offset(4, 4), // Shadow direction (right and down)
-            ),
-          ],
+          
         ),
         child: ElevatedButton(
           onPressed: onTap,
@@ -47,7 +40,7 @@ class Button1 extends StatelessWidget {
             child: Text(
               title,
               style: TextStyle(
-                fontSize: 25,
+                fontSize: 20,
                 fontWeight: FontWeight.w600,
                 color: textColor,
                 fontFamily: 'Electrolize',

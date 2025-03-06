@@ -18,6 +18,7 @@ class _HomeState extends State<Home> {
   LatLng? _currentLocation;
   double _selectedRadius = 200.0;
   Timer? _debounceTimer;
+  bool _showRadiusSlider = false; //Toggle for radius slider
   final supabase = Supabase.instance.client;
   List<Map<String, dynamic>> _communityMarkers = [];
 
@@ -27,6 +28,12 @@ class _HomeState extends State<Home> {
     _getCurrentLocation();
     _fetchRadiusFromDatabase();
     _subscribeToCommunityUpdates();
+  }
+
+  void _toggleRadiusSlider() {
+    setState(() {
+      _showRadiusSlider = !_showRadiusSlider;
+    });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -146,6 +153,7 @@ class _HomeState extends State<Home> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: Image.asset('assets/img/locusw.png', width: 170),
         actions: [
@@ -156,86 +164,127 @@ class _HomeState extends State<Home> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.person, color: Colors.white),
-            onPressed: () {
-              Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (builder) => const Profile()));
-            },
+            onPressed: _toggleRadiusSlider,
+            icon: Icon(
+              Icons.location_on,
+              color: Colors.white,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 15.0),
+            child: IconButton(
+              icon: const Icon(Icons.person, color: Colors.white),
+              onPressed: () {
+                Navigator.of(context).push(
+                    MaterialPageRoute(builder: (builder) => const Profile()));
+              },
+            ),
           ),
         ],
       ),
-      body: _currentLocation == null
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Text(
-                    "Current Radius: ${_selectedRadius.toInt()} meters",
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Slider(
-                  value: _selectedRadius,
-                  min: 100.0,
-                  max: 2000.0,
-                  divisions: 19,
-                  label: "${_selectedRadius.toInt()}m",
-                  onChanged: (value) {
-                    _updateRadiusDebounced(value);
-                  },
-                ),
-                Expanded(
-                  child: FlutterMap(
-                    options: MapOptions(
-                      initialCenter: _currentLocation!,
-                      initialZoom: 15.0,
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      ),
-                      MarkerLayer(
-                        markers: [
-                          // User's current location marker (red)
-                          Marker(
-                            point: _currentLocation!,
-                            width: 40,
-                            height: 40,
-                            child: const Tooltip(
-                              message: "Your Location",
-                              child: Icon(Icons.location_on, size: 40, color: Colors.red),
-                            ),
+      body: Stack(
+        children: [
+          _currentLocation == null
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    Expanded(
+                      child: FlutterMap(
+                        options: MapOptions(
+                          initialCenter: _currentLocation!,
+                          initialZoom: 15.0,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           ),
-                          // Community markers (green)
-                          ..._communityMarkers.map((community) => Marker(
-                                point: LatLng(community['lat'], community['long']),
+                          MarkerLayer(
+                            markers: [
+                              // User's current location marker (red)
+                              Marker(
+                                point: _currentLocation!,
                                 width: 40,
                                 height: 40,
-                                child: Tooltip(
-                                  message: community['title'],
-                                  child: const Icon(Icons.location_on, size: 40, color: Colors.green),
+                                child: const Tooltip(
+                                  message: "Your Location",
+                                  child: Icon(Icons.location_on,
+                                      size: 40, color: Colors.red),
                                 ),
-                              )),
-                        ],
-                      ),
-                      CircleLayer(
-                        circles: [
-                          CircleMarker(
-                            point: _currentLocation!,
-                            color: Colors.blue.withOpacity(0.3),
-                            borderColor: Colors.blue,
-                            borderStrokeWidth: 2,
-                            useRadiusInMeter: true,
-                            radius: _selectedRadius,
+                              ),
+                              // Community markers (green)
+                              ..._communityMarkers.map((community) => Marker(
+                                    point: LatLng(
+                                        community['lat'], community['long']),
+                                    width: 40,
+                                    height: 40,
+                                    child: Tooltip(
+                                      message: community['title'],
+                                      child: const Icon(Icons.location_on,
+                                          size: 40, color: Colors.green),
+                                    ),
+                                  )),
+                            ],
+                          ),
+                          CircleLayer(
+                            circles: [
+                              CircleMarker(
+                                point: _currentLocation!,
+                                color: Colors.blue.withOpacity(0.3),
+                                borderColor: Colors.blue,
+                                borderStrokeWidth: 2,
+                                useRadiusInMeter: true,
+                                radius: _selectedRadius,
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+            top: _showRadiusSlider ? 10 : -150, // Moves up and down
+            left: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  )
+                ],
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    "Current Radius: ${_selectedRadius.toInt()} meters",
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  Slider(
+                    value: _selectedRadius,
+                    min: 100.0,
+                    max: 2000.0,
+                    divisions: 19,
+                    label: "${_selectedRadius.toInt()}m",
+                    onChanged: (value) {
+                      _updateRadiusDebounced(value);
+                    },
+                  ),
+                ],
+              ),
             ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -54,40 +54,40 @@ class _ChatState extends State<Chat> {
   /// Listens for real-time updates on the user's location in profile table
   void _listenForLocationUpdates() {
     final userId = supabase.auth.currentUser!.id;
-    
+
     supabase
         .from('profile')
         .stream(primaryKey: ['user_id'])
         .eq('user_id', userId)
         .listen((List<Map<String, dynamic>> data) {
-      if (data.isNotEmpty) {
-        final userData = data.first;
-        final newLat = userData["last_loc"]["lat"] as double;
-        final newLong = userData["last_loc"]["long"] as double;
-        final newRange = double.parse(userData["range"].toString());
-        
-        // Check if location or range has changed
-        if (newLat != currentUserLat || 
-            newLong != currentUserLong || 
-            newRange != distanceThreshold) {
-          setState(() {
-            currentUserLat = newLat;
-            currentUserLong = newLong;
-            distanceThreshold = newRange;
-          });
-          
-          // Reload messages when location changes
-          _fetchMessages();
-        }
-      }
-    });
+          if (data.isNotEmpty) {
+            final userData = data.first;
+            final newLat = userData["last_loc"]["lat"] as double;
+            final newLong = userData["last_loc"]["long"] as double;
+            final newRange = double.parse(userData["range"].toString());
+
+            // Check if location or range has changed
+            if (newLat != currentUserLat ||
+                newLong != currentUserLong ||
+                newRange != distanceThreshold) {
+              setState(() {
+                currentUserLat = newLat;
+                currentUserLong = newLong;
+                distanceThreshold = newRange;
+              });
+
+              // Reload messages when location changes
+              _fetchMessages();
+            }
+          }
+        });
   }
 
   Future<void> _fetchMessages() async {
     setState(() {
       isLoading = true;
     });
-    
+
     try {
       final currentUserId = supabase.auth.currentUser!.id;
 
@@ -179,6 +179,7 @@ class _ChatState extends State<Chat> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         content: const Text(
             'You need to send a request to start a conversation with this user. Would you like to proceed?'),
         actions: [
@@ -260,43 +261,42 @@ class _ChatState extends State<Chat> {
         ),
         actions: [
           // Refresh button
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: GestureDetector(
-              onTap: () {
-                if (!isLoading) {
-                  _fetchMessages();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Refreshing messages...")),
-                  );
-                }
-              },
-              child: isLoading 
+          GestureDetector(
+            onTap: () {
+              if (!isLoading) {
+                _fetchMessages();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Refreshing messages...")),
+                );
+              }
+            },
+            child: isLoading
                 ? const SizedBox(
-                    width: 20, 
-                    height: 20, 
+                    width: 20,
+                    height: 20,
                     child: CircularProgressIndicator(
                       color: Colors.white,
                       strokeWidth: 2,
-                    )
-                  )
+                    ))
                 : const Icon(
                     Icons.refresh,
                     color: Colors.white,
                   ),
-            ),
+          ),
+          SizedBox(
+            width: 15,
           ),
           // Notifications button
           Padding(
-            padding: const EdgeInsets.only(right: 20.0),
-            child: GestureDetector(
-              onTap: () {
+            padding: const EdgeInsets.only(right: 15.0),
+            child: IconButton(
+              onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (builder) => Notifications()),
                 );
               },
-              child: const Icon(
-                Icons.notifications_outlined,
+              icon: Icon(
+                Icons.chat,
                 color: Colors.white,
               ),
             ),
@@ -317,7 +317,8 @@ class _ChatState extends State<Chat> {
                         )
                       : chats.isEmpty
                           ? const Center(
-                              child: Text('No messages nearby. Try adjusting your range.'),
+                              child: Text(
+                                  'No messages nearby. Try adjusting your range.'),
                             )
                           : RefreshIndicator(
                               onRefresh: () async {
@@ -327,7 +328,8 @@ class _ChatState extends State<Chat> {
                                 itemCount: chats.length,
                                 itemBuilder: (context, index) {
                                   final chat = chats[index];
-                                  final bool isAccept = chat['isActive'] == "true";
+                                  final bool isAccept =
+                                      chat['isActive'] == "true";
                                   return Chatcontainer(
                                     type: chat['type'] as String,
                                     // Instead of using a static image, we generate an avatar.
@@ -337,8 +339,11 @@ class _ChatState extends State<Chat> {
                                     date: chat["created_at"] as String,
                                     function: () {
                                       if (chat['isActive'] == "pending") {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text("You have a pending Request with the user!")),
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  "You have a pending Request with the user!")),
                                         );
                                       } else if (!isAccept) {
                                         _showRequest(context, chat['uid']);
@@ -347,7 +352,8 @@ class _ChatState extends State<Chat> {
                                           MaterialPageRoute(
                                             builder: (builder) => Chatinterface(
                                               id: chat['uid'] as String,
-                                              avatar: buildAvatar(chat['name'] as String),
+                                              avatar: buildAvatar(
+                                                  chat['name'] as String),
                                             ),
                                           ),
                                         );
@@ -372,8 +378,8 @@ class _ChatState extends State<Chat> {
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
                   builder: (context) => DraggableScrollableSheet(
-                    initialChildSize: 0.9,
-                    maxChildSize: 0.9,
+                    initialChildSize: 0.8,
+                    maxChildSize: 0.8,
                     minChildSize: 0.5,
                     builder: (context, scrollController) {
                       return Container(

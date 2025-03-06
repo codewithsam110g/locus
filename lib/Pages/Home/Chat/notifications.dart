@@ -4,6 +4,7 @@ import 'package:locus/Pages/Home/Chat/chatRequested.dart';
 import 'package:locus/widgets/primaryWidget.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
+import 'package:timeago/timeago.dart' as timeago;
 
 class Notifications extends StatefulWidget {
   @override
@@ -222,9 +223,9 @@ class _NotificationsState extends State<Notifications>
   void _filterChats(String query) {
     setState(() {
       if (query.isEmpty) {
-        filteredChats = List.from(chatRequests);
+        filteredChats = [...activeChats, ...chatRequests];
       } else {
-        filteredChats = chatRequests
+        filteredChats = [...activeChats, ...chatRequests]
             .where((chat) =>
                 chat['name']!.toLowerCase().contains(query.toLowerCase()) ||
                 chat['lmsg']!.toLowerCase().contains(query.toLowerCase()))
@@ -252,17 +253,27 @@ class _NotificationsState extends State<Notifications>
                   border: InputBorder.none,
                 ),
               )
-            : const Padding(
-                padding: EdgeInsets.only(left: 20.0),
-                child: Text(
-                  'Messages',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
-                    fontFamily: 'Electrolize',
+            : Row(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    icon: Icon(
+                      Icons.arrow_back_ios,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
+                  Text(
+                    'Messages',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                      fontFamily: 'Electrolize',
+                    ),
+                  ),
+                ],
               ),
         actions: [
           Padding(
@@ -276,17 +287,6 @@ class _NotificationsState extends State<Notifications>
                     color: Colors.white,
                   ),
                 ),
-                if (!_isSearching) const SizedBox(width: 20),
-                if (!_isSearching)
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).pop();
-                    },
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                    ),
-                  ),
               ],
             ),
           ),
@@ -324,18 +324,71 @@ class _NotificationsState extends State<Notifications>
               itemCount: activeChats.length,
               itemBuilder: (context, index) {
                 final chat = activeChats[index];
-                return Primarywidget(
-                  img: chat['img']!,
-                  name: chat['name']!,
-                  lmsg: 'Tap to chat',
-                  function: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (builder) => Chatinterface(
-                          id: chat['id']!,
-                          avatar: Image.asset(chat['img']!),
-                        ),
-                      ),
+                final chatId = chat['chat_id'];
+
+                return StatefulBuilder(
+                  builder: (context, setState) {
+                    Timer? timer;
+
+                    void startTimer(DateTime messageTime) {
+                      Duration updateInterval = _getUpdateInterval(messageTime);
+
+                      timer?.cancel(); // Cancel any existing timer
+
+                      timer = Timer.periodic(updateInterval, (timer) {
+                        setState(() {}); // Trigger UI update
+                      });
+                    }
+
+                    return FutureBuilder(
+                      future: supabase
+                          .from('private_messages')
+                          .select('message, created_at')
+                          .eq('chat_id', chatId as Object)
+                          .order('created_at', ascending: false)
+                          .limit(1)
+                          .maybeSingle(),
+                      builder: (context, snapshot) {
+                        String lastMessage = "Tap to chat";
+                        String lastMessageTime = "";
+
+                        if (snapshot.hasData && snapshot.data != null) {
+                          lastMessage =
+                              snapshot.data?['message'] ?? "Tap to chat";
+                          if (lastMessage.length > 15) {
+                            lastMessage = lastMessage.substring(0, 10) + "...";
+                          }
+
+                          if (snapshot.data?['created_at'] != null) {
+                            DateTime messageTime =
+                                DateTime.parse(snapshot.data?['created_at'])
+                                    .toLocal();
+                            lastMessageTime = timeago.format(messageTime);
+
+                            startTimer(messageTime); // Start auto-updates
+                          }
+                        }
+
+                        return Primarywidget(
+                          img: chat['img']!,
+                          name: chat['name']!,
+                          lmsg: lastMessage,
+                          time: lastMessageTime,
+                          function: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (builder) => Chatinterface(
+                                  id: chat['id']!,
+                                  avatar: Image.asset(chat['img']!),
+                                  userName: chat['name']!,
+                                ),
+                              ),
+                            );
+
+                            _fetchChats();
+                          },
+                        );
+                      },
                     );
                   },
                 );
@@ -353,6 +406,21 @@ class _NotificationsState extends State<Notifications>
     );
   }
 
+  /// Determines the update interval based on the message age
+  Duration _getUpdateInterval(DateTime messageTime) {
+    final Duration elapsed = DateTime.now().difference(messageTime);
+
+    if (elapsed.inMinutes < 10) {
+      return const Duration(minutes: 1);
+    } else if (elapsed.inMinutes < 60) {
+      return const Duration(minutes: 5);
+    } else if (elapsed.inHours < 24) {
+      return const Duration(hours: 1);
+    } else {
+      return const Duration(days: 1);
+    }
+  }
+
   Widget _buildSearchResults() {
     return Padding(
       padding: const EdgeInsets.only(top: 20.0, left: 20, right: 20),
@@ -361,19 +429,34 @@ class _NotificationsState extends State<Notifications>
               itemCount: filteredChats.length,
               itemBuilder: (context, index) {
                 final chat = filteredChats[index];
+                final chatId = chat['chat_id'];
                 return Primarywidget(
                   img: chat['img']!,
                   name: chat['name']!,
-                  lmsg: chat['lmsg']!,
+                  lmsg: chat['lmsg'] ?? 'Tap to chat',
+                  time: '',
                   function: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (builder) => Chatinterface(
-                          id: chat['id']!,
-                          avatar: Image.asset(chat['img']!),
+                    if (chat.containsKey('chat_id')) {
+                      // It's an active chat
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (builder) => Chatinterface(
+                            id: chat['id']!,
+                            avatar: Image.asset(chat['img']!),
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    } else {
+                      // It's a chat request
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (builder) => Chatforrequested(
+                            id: chat['id']!,
+                            img: chat['img']!,
+                          ),
+                        ),
+                      );
+                    }
                   },
                 );
               },
@@ -421,6 +504,7 @@ class _NotificationsState extends State<Notifications>
                         img: chat['img']!,
                         name: chat['name']!,
                         lmsg: "Status: ${chat['lmsg']}",
+                        time: '',
                         function: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
@@ -436,7 +520,7 @@ class _NotificationsState extends State<Notifications>
                   ),
                 ],
               )
-            else
+            else if (outgoingRequests.isEmpty)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(20.0),
@@ -471,13 +555,14 @@ class _NotificationsState extends State<Notifications>
                         img: chat['img']!,
                         name: chat['name']!,
                         lmsg: "Status: ${chat['lmsg']}",
+                        time: '',
                         function: () {}, // Add functionality if needed
                       );
                     },
                   ),
                 ],
               )
-            else
+            else if (incomingRequests.isEmpty)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(20.0),

@@ -5,10 +5,9 @@ import 'package:locus/widgets/button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 
-
 class Newgroup extends StatefulWidget {
   @override
-   createState() => _NewgroupState();
+  createState() => _NewgroupState();
 }
 
 class _NewgroupState extends State<Newgroup> {
@@ -51,18 +50,18 @@ class _NewgroupState extends State<Newgroup> {
     });
     return isValid;
   }
-  
+
   Future<Position?> _getCurrentLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
-  
+
     // Check if location services are enabled
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       Fluttertoast.showToast(msg: "Location services are disabled.");
       return null;
     }
-  
+
     // Request permission
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
@@ -72,47 +71,45 @@ class _NewgroupState extends State<Newgroup> {
         return null;
       }
     }
-  
+
     if (permission == LocationPermission.deniedForever) {
       Fluttertoast.showToast(
-          msg: "Location permission is permanently denied. Enable it in settings.");
+          msg:
+              "Location permission is permanently denied. Enable it in settings.");
       return null;
     }
-  
+
     // Get current position
     return await Geolocator.getCurrentPosition();
   }
-  
+
   Future<void> requestCommunity() async {
     final title = _titleController.text.trim();
     final desc = _descriptionController.text.trim();
     final tags = _selectedTag!.trim();
     final com_id = title.replaceAll(" ", "_");
     final userId = supabase.auth.currentUser!.id;
-  
+
     // Fetch the user's profile
     final prof = await supabase
         .from("profile")
         .select("com_id")
         .eq("user_id", userId)
         .single();
-  
+
     if (prof["com_id"] != null) {
       Fluttertoast.showToast(msg: "You already have a group!");
       return;
     }
-  
+
     // Get the current location
     Position? position = await _getCurrentLocation();
     if (position == null) {
       return; // Stop execution if location is not available
     }
-  
-    final locationData = {
-      "lat": position.latitude,
-      "long": position.longitude
-    };
-  
+
+    final locationData = {"lat": position.latitude, "long": position.longitude};
+
     // Insert into database
     await supabase.from("community").insert({
       "com_id": com_id,
@@ -121,10 +118,11 @@ class _NewgroupState extends State<Newgroup> {
       "desc": desc,
       "location": locationData
     });
-  
-    await supabase.from("profile").update({"com_id": com_id}).eq("user_id", userId);
-  }
 
+    await supabase
+        .from("profile")
+        .update({"com_id": com_id}).eq("user_id", userId);
+  }
 
   // Function to show a dialog box
   void _showConfirmationDialog() {
@@ -155,197 +153,176 @@ class _NewgroupState extends State<Newgroup> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.primary,
+      backgroundColor: Colors.white,
       body: SingleChildScrollView(
         scrollDirection: Axis.vertical,
         child: Padding(
-          padding: const EdgeInsets.all(30.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Align(
-                alignment: Alignment.topRight,
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 30,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 10,
+                ),
+                Container(
+                  height: 8,
+                  width: 70,
+                  decoration: BoxDecoration(
+                    color: Colors.grey,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  onPressed: () {
-                    Navigator.pop(context); // Perform pop when clicked
+                ),
+                SizedBox(
+                  height: 15,
+                ),
+                Center(
+                  child: const Text(
+                    "Create Group",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 25,
+                        fontFamily: 'Electrolize'),
+                  ),
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                // Title Field
+                _buildInputField("Title", "Enter group title", _titleController,
+                    _titleError),
+                const SizedBox(height: 15),
+
+                // Description Field
+                _buildInputField("Description", "Enter group description",
+                    _descriptionController, _descriptionError,
+                    maxLines: 4),
+                const SizedBox(height: 15),
+
+                // Logo Picker
+                _buildImagePicker(),
+                SizedBox(
+                  height: 10,
+                ),
+
+                // Tag Dropdown
+                _buildTagDropdown(),
+
+                const SizedBox(height: 25),
+
+                // Add Button
+                Button1(
+                  title: 'Request Group',
+                  colors: Theme.of(context).colorScheme.primary,
+                  textColor: Colors.white,
+                  onTap: () {
+                    if (_validateFields()) {
+                      _showConfirmationDialog();
+                    }
                   },
                 ),
-              ),
-              const SizedBox(height: 30),
-              const Text(
-                "Add New Group",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  fontFamily: 'Electrolize',
-                ),
-              ),
-              const SizedBox(height: 30),
-
-              // Row for Title
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    "Title:",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: TextField(
-                      controller: _titleController,
-                      decoration: InputDecoration(
-                        hintText: 'Enter group title',
-                        hintStyle: TextStyle(color: Colors.grey),
-                        filled: true,
-                        fillColor: Colors.white,
-                        errorText: _titleError,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                            6,
-                          ), // Adjust the radius as needed
-                          borderSide:
-                              BorderSide.none, // Removes the default border
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 30),
-
-              // Column for Description
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Description:",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _descriptionController,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      hintText: 'Enter group description',
-                      hintStyle: TextStyle(color: Colors.grey),
-                      filled: true,
-                      fillColor: Colors.white,
-                      errorText: _descriptionError,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(
-                          6,
-                        ), // Adjust the radius as needed
-                        borderSide:
-                            BorderSide.none, // Removes the default border
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 30),
-
-              // Row for Logo
-              Row(
-                children: [
-                  const Text(
-                    "Logo:",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  ElevatedButton(
-                    onPressed: _chooseFile,
-                    child: const Text("Choose File"),
-                  ),
-                  const SizedBox(width: 10),
-                  if (_selectedImage != null)
-                    const Text(
-                      "Image selected",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  if (_logoError != null)
-                    Text(
-                      _logoError!,
-                      style: TextStyle(color: Colors.red, fontSize: 12),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 30),
-
-              // Row for Add tags dropdown
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Text(
-                    "Add tags:",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedTag,
-                      items:
-                          ['Organization', 'Building', 'Community', 'Project']
-                              .map((tag) => DropdownMenuItem<String>(
-                                    value: tag,
-                                    child: Text(tag),
-                                  ))
-                              .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedTag = value;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.white,
-                        hintText: 'Select a tag',
-                        hintStyle: TextStyle(color: Colors.grey),
-                        errorText: _tagError,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 30),
-
-              // Add button
-              Button1(
-                title: 'Add',
-                colors: Colors.white,
-                textColor: Theme.of(context).colorScheme.primary,
-                onTap: () {
-                  if (_validateFields()) {
-                    _showConfirmationDialog();
-                  }
-                },
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  // Input field widget
+  Widget _buildInputField(String label, String hint,
+      TextEditingController controller, String? error,
+      {int maxLines = 1}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 5),
+        TextField(
+          controller: controller,
+          maxLines: maxLines,
+          decoration: InputDecoration(
+            hintText: hint,
+            filled: true,
+            fillColor: Colors.grey[100],
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none),
+            errorText: error,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Image Picker widget
+  Widget _buildImagePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Upload Logo",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 5),
+        Row(
+          children: [
+            ElevatedButton.icon(
+              onPressed: _chooseFile,
+              icon: const Icon(
+                Icons.image,
+                color: Colors.grey,
+              ),
+              label: const Text(
+                "Choose Image",
+                style: TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey[100], 
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10), 
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            if (_selectedImage != null)
+              const Icon(Icons.check_circle, color: Colors.green),
+            if (_logoError != null)
+              Text(_logoError!,
+                  style: const TextStyle(color: Colors.red, fontSize: 12)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Tag Dropdown widget
+  Widget _buildTagDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Tag",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 5),
+        DropdownButtonFormField<String>(
+          value: _selectedTag,
+          items: ['Organization', 'Building', 'Community', 'Project']
+              .map((tag) =>
+                  DropdownMenuItem<String>(value: tag, child: Text(tag)))
+              .toList(),
+          onChanged: (value) => setState(() => _selectedTag = value),
+          decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.grey[100],
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none),
+              errorText: _tagError,
+              hintText: 'Select Tag'),
+        ),
+      ],
     );
   }
 }
