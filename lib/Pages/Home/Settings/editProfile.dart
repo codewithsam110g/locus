@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:locus/widgets/button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:locus/Pages/Home/Settings/settings.dart';
 
 /// A custom input formatter to auto-insert dashes for the birthday field.
 /// The desired format is: YYYY-MM-DD.
@@ -41,6 +40,13 @@ class DateTextInputFormatter extends TextInputFormatter {
 }
 
 class Editprofile extends StatefulWidget {
+  final String name;
+  final String dob;
+  const Editprofile({
+    super.key,
+    required this.name, required this.dob,
+  });
+
   @override
   State<Editprofile> createState() => _EditprofileState();
 }
@@ -56,8 +62,9 @@ class _EditprofileState extends State<Editprofile> {
   @override
   void initState() {
     super.initState();
-    _loadProfile();
     avatarColor = _getRandomColor();
+    _birthdayController.text = widget.dob;
+    _nameController.text = widget.name;
   }
 
   @override
@@ -78,39 +85,6 @@ class _EditprofileState extends State<Editprofile> {
     );
   }
 
-  Future<void> _loadProfile() async {
-    final supabase = Supabase.instance.client;
-    final userId = supabase.auth.currentUser!.id;
-    final profile = await supabase
-        .from('profile')
-        .select('name, dob')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-    if (profile != null) {
-      setState(() {
-        _nameController.text = profile["name"] ?? '';
-
-        // Convert the birthday to the desired format if necessary.
-        var birthdayValue = profile["dob"];
-        if (birthdayValue != null) {
-          // Check if birthdayValue is already a String in the desired format.
-          try {
-            // Try parsing the birthday value to DateTime.
-            DateTime parsedDate = DateTime.parse(birthdayValue.toString());
-            // Format it as YYYY-MM-DD.
-            _birthdayController.text =
-                parsedDate.toIso8601String().split('T')[0];
-          } catch (e) {
-            // If parsing fails, use the value directly.
-            _birthdayController.text = birthdayValue.toString();
-          }
-        } else {
-          _birthdayController.text = '';
-        }
-      });
-    }
-  }
 
   /// Updates the profile in Supabase.
   Future<void> _updateProfile(BuildContext ctx) async {
@@ -176,30 +150,28 @@ class _EditprofileState extends State<Editprofile> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: Theme.of(context).colorScheme.primary,
-        title: const Padding(
-          padding: EdgeInsets.only(left: 20.0),
-          child: Text(
-            'Edit Profile',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w500,
-              color: Colors.white,
-              fontFamily: 'Electrolize',
-            ),
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 20.0),
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: const Icon(
-                Icons.close,
+        title: Row(
+          children: [
+            IconButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              icon: Icon(
+                Icons.arrow_back_ios,
                 color: Colors.white,
               ),
             ),
-          ),
-        ],
+            Text(
+              'Edit Profile',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+                fontFamily: 'Electrolize',
+              ),
+            ),
+          ],
+        ),
       ),
       body: SizedBox(
         height: height,

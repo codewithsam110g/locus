@@ -4,14 +4,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Userview extends StatefulWidget {
   final String id;
-  const Userview({super.key, required this.id});
+  final String name;
+  const Userview({
+    super.key,
+    required this.id,
+    required this.name,
+  });
 
   @override
   State<Userview> createState() => _UserviewState();
 }
 
 class _UserviewState extends State<Userview> {
-  String name = "Group name";
   List<Map<String, dynamic>> messages = [];
   bool isLoading = true;
 
@@ -20,22 +24,9 @@ class _UserviewState extends State<Userview> {
   @override
   void initState() {
     super.initState();
-    fetchCommunityInfo();
   }
 
-  Future<void> fetchCommunityInfo() async {
-    final com = await supabase
-        .from("community")
-        .select("title")
-        .eq("com_id", widget.id)
-        .single();
-
-    setState(() {
-      name = com['title'].toString();
-    });
-
-    await fetchMessages();
-  }
+  
 
   Future<void> fetchMessages() async {
     final fetchedMessages = await supabase
@@ -69,7 +60,7 @@ class _UserviewState extends State<Userview> {
             ),
             const SizedBox(width: 10),
             Text(
-              name,
+              widget.name,
               style: const TextStyle(
                 fontSize: 18,
                 color: Colors.white,

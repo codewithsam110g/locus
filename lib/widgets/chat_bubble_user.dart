@@ -34,7 +34,7 @@ class ChatBubbleUser extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 3.0),
+        padding: const EdgeInsets.only(bottom: 3.0, left: 10),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,

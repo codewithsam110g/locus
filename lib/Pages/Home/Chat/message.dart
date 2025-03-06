@@ -10,6 +10,8 @@ class Message extends StatefulWidget {
 class _MessageState extends State<Message> {
   final TextEditingController _controller = TextEditingController();
   bool _isButtonEnabled = false;
+  final int _maxChars = 50;
+  bool isSending = false;
   final SupabaseClient supabase = Supabase.instance.client;
 
   @override
@@ -20,12 +22,15 @@ class _MessageState extends State<Message> {
 
   void _checkTextField() {
     setState(() {
-      _isButtonEnabled = _controller.text.trim().isNotEmpty;
+      _isButtonEnabled = _controller.text.trim().isNotEmpty && _controller.text.length <= _maxChars ;
     });
   }
 
   Future<void> _sendMessage() async {
-    if (_controller.text.trim().isEmpty) return;
+     if (!_isButtonEnabled || isSending) return;
+    setState(() {
+      isSending = true;
+    });
 
     try {
       Position position = await Geolocator.getCurrentPosition(
@@ -49,6 +54,10 @@ class _MessageState extends State<Message> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to send message')),
       );
+    }finally{
+      setState(() {
+        isSending = false;
+      });
     }
   }
 
@@ -73,36 +82,63 @@ class _MessageState extends State<Message> {
                   onTap: () => Navigator.of(context).pop(),
                   child: const Icon(Icons.close, size: 30),
                 ),
-                ElevatedButton(
-                  onPressed: _isButtonEnabled ? _sendMessage : null,
-                  child: Text(
-                    'Send',
-                    style: TextStyle(
-                        color: Theme.of(context).colorScheme.tertiary),
-                  ),
-                  style: ButtonStyle(
-                    backgroundColor: MaterialStateProperty.resolveWith<Color>(
-                      (states) => states.contains(MaterialState.disabled)
-                          ? Theme.of(context).colorScheme.secondary
-                          : Theme.of(context).colorScheme.primary,
+                Row(
+                  children: [
+                    Text(
+                      '${_controller.text.length}/${_maxChars}'
                     ),
-                  ),
+                    SizedBox(width: 10,),
+                    ElevatedButton(
+                      onPressed: _isButtonEnabled && !isSending ? _sendMessage : null,
+                      style: ButtonStyle(
+                        backgroundColor: MaterialStateProperty.resolveWith<Color>(
+                          (states) => _isButtonEnabled
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.secondary,
+                        ),
+                      ),
+                      child: isSending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              'Send',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.tertiary,
+                              ),
+                            ),
+                    ),
+                   
+                    
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 20),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10.0),
-              child: TextField(
-                controller: _controller,
-                minLines: 7,
-                maxLines: 9,
-                cursorColor: Theme.of(context).colorScheme.secondary,
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Send Message..',
-                  hintStyle: TextStyle(color: Colors.grey),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  TextField(
+                    controller: _controller,
+                    maxLength: _maxChars,
+                    minLines: 7,
+                    maxLines: 9,
+                    cursorColor: Theme.of(context).colorScheme.secondary,
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      hintText: 'Send Message..',
+                      hintStyle: TextStyle(color: Colors.grey),
+                      counterText: "", // Hide default counter
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
