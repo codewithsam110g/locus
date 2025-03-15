@@ -1,8 +1,12 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:locus/Pages/LoginRegister/login.dart';
+import 'package:locus/Pages/Home/mainScreen.dart';
+import 'package:locus/Pages/LoginRegister/ForgetPassord/forgetPassword.dart';
 import 'package:locus/Pages/LoginRegister/register/registerMain.dart';
+import 'package:locus/widgets/Buttons/newButton.dart';
 import 'package:locus/widgets/customContainer.dart';
+import 'package:locus/widgets/inputfeilds.dart';
 import 'package:locus/widgets/otherOptions.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -61,7 +65,115 @@ Future<AuthResponse> _googleSignIn() async {
   }
 }
 
+Future<void> doStuff() async {
+  await requestPermission();
+  await getFCMToken();
+}
+
+Future<void> requestPermission() async {
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+  NotificationSettings settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    print("Permission granted");
+  } else {
+    print("Permission denied");
+  }
+}
+
+Future<void> setFcmToken(String? token) async {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser!.id;
+  await supabase
+      .from("profile")
+      .update({"fcm_token": token}).eq("user_id", userId);
+}
+
+Future<void> getFCMToken() async {
+  String? token = await FirebaseMessaging.instance.getToken();
+  print("FCM Token: $token");
+  await setFcmToken(token);
+}
+
+Future<void> signInWithEmail(
+    BuildContext ctx, String? email, String? pwd) async {
+  final supabase = Supabase.instance.client;
+  final AuthResponse res =
+      await supabase.auth.signInWithPassword(email: email, password: pwd ?? "");
+  await doStuff();
+  Navigator.of(ctx).push(
+    MaterialPageRoute(
+      builder: (builder) => Mainscreen(),
+    ),
+  );
+}
+
 class _LoginmainState extends State<Loginmain> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isSubmitted = false;
+  bool _isLoading = false;
+
+  String? _emailError;
+  String? _passwordError;
+
+  Future<void> _handleLogin() async {
+    setState(() {
+      _isLoading = true;
+      _emailError = null;
+      _passwordError = null;
+    });
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty && password.isEmpty) {
+      setState(() {
+        _emailError = "Email cannot be empty";
+        _passwordError = "Password cannot be empty";
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (email.isEmpty) {
+      setState(() {
+        _emailError = "Email cannot be empty";
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (password.isEmpty) {
+      setState(() {
+        _passwordError = "Password cannot be empty";
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      await signInWithEmail(context, email, password);
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (e.toString().contains("invalid_credentials")) {
+        _passwordError = "Incorrect email or password";
+      } else if (e.toString().contains("Failed host lookup")) {
+        _passwordError = "No internet connection. Please check your network.";
+      } else {
+        _passwordError = "Something went wrong. Please try again.";
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -78,44 +190,111 @@ class _LoginmainState extends State<Loginmain> {
                 child: Image.asset('assets/img/locus1.png'),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20.0),
-                child: Container(
-                  height: 9,
-                  width: 180,
-                  decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondary,
-                      borderRadius: BorderRadius.circular(5)),
-                ),
-              ),
-              Padding(
                 padding: const EdgeInsets.only(bottom: 20.0),
                 child: Text(
-                  'Login',
+                  'Welcome Back!',
                   style: TextStyle(
-                    fontSize: 48,
+                    fontSize: 30,
                     fontWeight: FontWeight.w500,
                     color: Theme.of(context).colorScheme.primary,
                     fontFamily: 'Electrolize',
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 25.0),
-                child: Customcontainer(
-                  widget: Icon(
-                    Icons.person,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  text: 'Continue with Email',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (builder) => Login(),
+              Form(
+                key: _formKey,
+                autovalidateMode: _isSubmitted
+                    ? AutovalidateMode.always
+                    : AutovalidateMode.disabled,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 20),
+                    Inputfields(
+                      title: 'Email',
+                      emoji: const Icon(Icons.person_2_outlined),
+                      controller: _emailController,
+                      onTap: (value) {
+                        return null;
+                      },
+                      keyBoard1: false,
+                      obscureText: false,
+                    ),
+                    if (_emailError != null)
+                      Text(
+                        _emailError!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
                       ),
-                    );
-                  },
+                    SizedBox(
+                      height: 25,
+                    ),
+                    Inputfields(
+                      title: 'Enter Password',
+                      emoji: const Icon(Icons.lock),
+                      controller: _passwordController,
+                      onTap: (value) {
+                        return null;
+                      },
+                      keyBoard1: false,
+                      obscureText: true, // Always starts hidden
+                      isPasswordField: true,
+                    ),
+                    if (_passwordError != null)
+                      Text(
+                        _passwordError!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    SizedBox(
+                      height: 10,
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        onTap: () {
+                          print("onTap");
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (builder) => ForgetPassword(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Forgot Password?',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            decoration: TextDecoration.underline,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 20,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 20.0),
+                      child: CustomButton(
+                        text: _isLoading ? 'Loading...' : 'Login',
+                        color: Theme.of(context).colorScheme.primary,
+                        textColor: Colors.white,
+                        onPressed: _isLoading ? () {} : _handleLogin,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 5.0),
+                    child: Text('Or'),
+                  ),
+                  Expanded(child: Divider()),
+                ],
+              ),
+              SizedBox(height: 25),
               Padding(
                 padding: const EdgeInsets.only(bottom: 25.0),
                 child: Customcontainer(

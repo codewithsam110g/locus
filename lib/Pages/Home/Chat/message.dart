@@ -10,7 +10,7 @@ class Message extends StatefulWidget {
 class _MessageState extends State<Message> {
   final TextEditingController _controller = TextEditingController();
   bool _isButtonEnabled = false;
-  final int _maxChars = 50;
+  final int _maxChars = 300;
   bool isSending = false;
   final SupabaseClient supabase = Supabase.instance.client;
 
