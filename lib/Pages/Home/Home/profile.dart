@@ -3,6 +3,7 @@ import 'package:locus/Pages/Home/Home/about.dart';
 import 'dart:math';
 import 'package:locus/Pages/Home/Settings/editProfile.dart';
 import 'package:locus/Pages/Home/Settings/updatePassword.dart';
+import 'package:locus/Pages/LoginRegister/loginMain.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -153,16 +154,22 @@ class _ProfileState extends State<Profile> {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
+                    elevation: 0,
+                    backgroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
+                        borderRadius: BorderRadius.circular(15),
+                        side: BorderSide(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 1.4,
+                        )),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 25, vertical: 12),
+                      horizontal: 25,
+                      vertical: 12,
+                    ),
                   ),
-                  label: const Text(
+                  label: Text(
                     "Edit Profile",
-                    style: TextStyle(color: Colors.white, fontSize: 16),
+                    style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
                   ),
                 ),
                 ElevatedButton.icon(
@@ -200,9 +207,11 @@ class _ProfileState extends State<Profile> {
                   child: const Text(
                     "Delete Account",
                     style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                        decoration: TextDecoration.underline),
+                      fontSize: 12,
+                      color: Colors.grey,
+                      decoration: TextDecoration.underline,
+                      decorationColor: Colors.grey,
+                    ),
                   ),
                 ),
                 Text(
@@ -212,14 +221,20 @@ class _ProfileState extends State<Profile> {
                 TextButton(
                   onPressed: () async {
                     await Supabase.instance.client.auth.signOut();
-                    Navigator.of(context).pop();
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (builder) => Loginmain(),
+                      ),
+                    );
                   },
                   child: const Text(
                     "Sign Out",
                     style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                        decoration: TextDecoration.underline),
+                      fontSize: 12,
+                      color: Colors.grey,
+                      decoration: TextDecoration.underline,
+                      decorationColor: Colors.grey,
+                    ),
                   ),
                 ),
               ],

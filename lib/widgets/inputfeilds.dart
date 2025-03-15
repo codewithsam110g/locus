@@ -7,8 +7,9 @@ class Inputfields extends StatefulWidget {
   final String? Function(String?)? onTap;
   final bool keyBoard1;
   final bool obscureText;
-  final IconData? suffixIcon;
-  final VoidCallback? suffixIconTap;
+  final bool isPasswordField;
+  final VoidCallback? suffixIconTap; // ✅ Added suffix icon tap callback
+  final IconData? suffixIcon; // ✅ Custom suffix icon
 
   const Inputfields({
     super.key,
@@ -18,8 +19,9 @@ class Inputfields extends StatefulWidget {
     required this.onTap,
     required this.keyBoard1,
     required this.obscureText,
-    this.suffixIcon,
+    this.isPasswordField = false,
     this.suffixIconTap,
+    this.suffixIcon, // ✅ Optional icon
   });
 
   @override
@@ -41,44 +43,54 @@ class _InputfieldsState extends State<Inputfields> {
       child: TextFormField(
         controller: widget.controller,
         validator: widget.onTap,
-        style: const TextStyle(
-          color: Colors.black,
-        ),
-        obscureText: widget.obscureText && _isObscure,
+        style: const TextStyle(color: Colors.black),
+        obscureText: widget.isPasswordField ? _isObscure : widget.obscureText,
         decoration: InputDecoration(
           hintText: widget.title,
           hintStyle: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: Colors.black.withOpacity(_isFocused ? 1 : 0.25),
+            color: Colors.black.withOpacity(_isFocused ? 1 : 0.5),
           ),
           prefixIcon: widget.emoji,
-          prefixIconColor: Colors.black.withOpacity(_isFocused ? 1 : 0.25),
-          suffixIcon: widget.suffixIcon != null
+          prefixIconColor: Colors.black.withOpacity(_isFocused ? 1 : 0.5),
+          suffixIcon: widget.isPasswordField
               ? IconButton(
                   icon: Icon(
-                    widget.suffixIcon,
-                    color: Colors.black.withOpacity(_isFocused ? 1 : 0.5),
+                    _isObscure ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.black.withOpacity(_isFocused ? 1 : 0.7),
                   ),
-                  onPressed: widget.suffixIconTap,
+                  onPressed: () {
+                    setState(() {
+                      _isObscure = !_isObscure; // Toggle visibility
+                    });
+                  },
                 )
-              : null,
+              : (widget.suffixIcon != null
+                  ? IconButton(
+                      icon: Icon(widget.suffixIcon,
+                          color:
+                              Colors.black.withOpacity(_isFocused ? 1 : 0.5)),
+                      onPressed: widget.suffixIconTap,
+                    )
+                  : null),
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide(
-              color: Colors.black.withOpacity(_isFocused ? 1 : 0.25),
+              color: Colors.black.withOpacity(_isFocused ? 1 : 0.5),
               width: 1.5,
               style: BorderStyle.solid,
             ),
           ),
           focusedBorder: OutlineInputBorder(
             borderSide: BorderSide(
-              color: Colors.black.withOpacity(_isFocused ? 1 : 0.25),
+              color: Colors.black.withOpacity(_isFocused ? 1 : 0.5),
               width: 1.5,
               style: BorderStyle.solid,
             ),
           ),
         ),
-        keyboardType: widget.keyBoard1 ? TextInputType.number : TextInputType.text,
+        keyboardType:
+            widget.keyBoard1 ? TextInputType.number : TextInputType.text,
       ),
     );
   }
