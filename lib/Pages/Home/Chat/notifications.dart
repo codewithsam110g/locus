@@ -57,10 +57,10 @@ class _NotificationsState extends State<Notifications>
       _fetchChats();
     });
 
-    // Listen for changes in the profile table (for name updates)
+    // Listen for changes in the profile table (for name and image updates)
     final profileSubscription =
         supabase.from('profile').stream(primaryKey: ['user_id']).listen((data) {
-      // Refresh both chats and requests to update names
+      // Refresh both chats and requests to update names and images
       _fetchChats();
       _fetchChatRequests();
     });
@@ -97,15 +97,19 @@ class _NotificationsState extends State<Notifications>
       }
     }
 
-    Map<String, String> userNames = {};
+    // We'll store both names and image links
+    Map<String, Map<String, String>> userInfo = {};
     if (userIdsToFetch.isNotEmpty) {
       final profilesResponse = await supabase
           .from('profile')
-          .select('user_id, name')
+          .select('user_id, name, image_link')
           .or(userIdsToFetch.map((id) => 'user_id.eq.$id').join(','));
 
       for (var profile in profilesResponse) {
-        userNames[profile['user_id']] = profile['name'] ?? 'Unknown User';
+        userInfo[profile['user_id']] = {
+          'name': profile['name'] ?? 'Unknown User',
+          'image_link': profile['image_link'] ?? '',
+        };
       }
     }
 
@@ -114,11 +118,16 @@ class _NotificationsState extends State<Notifications>
         String otherUserId =
             chat['uid_1'] == currentUserId ? chat['uid_2'] : chat['uid_1'];
 
+        var userProfileInfo = userInfo[otherUserId] ??
+            {'name': 'Unknown User', 'image_link': ''};
+
         return {
           'id': otherUserId,
           'chat_id': chat['id'].toString(),
-          'name': userNames[otherUserId] ?? 'Unknown User',
-          'img': 'assets/img/mohan.jpg', // Replace with real profile image
+          'name': userProfileInfo['name'] ?? 'Unknown User',
+          'img': userProfileInfo['image_link']?.isNotEmpty == true
+              ? userProfileInfo['image_link']!
+              : 'assets/img/mohan.jpg', // Default image if image_link is empty
         };
       }).toList();
     });
@@ -169,7 +178,7 @@ class _NotificationsState extends State<Notifications>
       return;
     }
 
-    // Extract unique user IDs to fetch names
+    // Extract unique user IDs to fetch names and images
     Set<String> userIdsToFetch = {};
     for (var req in response) {
       String otherUserId = req['reciever_uid'] == currentUserId
@@ -181,19 +190,23 @@ class _NotificationsState extends State<Notifications>
       }
     }
 
-    // Fetch user names from the profile table
-    Map<String, String> userNames = {};
+    // Fetch user names and images from the profile table
+    Map<String, Map<String, String>> userInfo = {};
     if (userIdsToFetch.isNotEmpty) {
       final profilesResponse = await supabase
           .from('profile')
-          .select('user_id, name')
+          .select('user_id, name, image_link')
           .or(userIdsToFetch.map((id) => 'user_id.eq.$id').join(','));
+
       for (var profile in profilesResponse) {
-        userNames[profile['user_id']] = profile['name'] ?? 'Unknown User';
+        userInfo[profile['user_id']] = {
+          'name': profile['name'] ?? 'Unknown User',
+          'image_link': profile['image_link'] ?? '',
+        };
       }
     }
 
-    // Construct the chatRequests list with names
+    // Construct the chatRequests list with names and images
     if (mounted) {
       setState(() {
         chatRequests = response.map<Map<String, String>>((req) {
@@ -201,12 +214,17 @@ class _NotificationsState extends State<Notifications>
               ? req['requested_uid']
               : req['reciever_uid'];
 
+          var userProfileInfo = userInfo[otherUserId] ??
+              {'name': 'Unknown User', 'image_link': ''};
+
           return {
             'id': otherUserId,
             'request_id': req['id'].toString(),
-            'name': userNames[otherUserId] ?? 'Unknown User',
+            'name': userProfileInfo['name'] ?? 'Unknown User',
             'lmsg': req['status'] ?? '',
-            'img': 'assets/img/mohan.jpg', // Default image
+            'img': userProfileInfo['image_link']?.isNotEmpty == true
+                ? userProfileInfo['image_link']!
+                : 'assets/img/mohan.jpg', // Default image if image_link is empty
             'type':
                 req['reciever_uid'] == currentUserId ? 'incoming' : 'outgoing',
           };
@@ -325,6 +343,8 @@ class _NotificationsState extends State<Notifications>
               itemBuilder: (context, index) {
                 final chat = activeChats[index];
                 final chatId = chat['chat_id'];
+                final imageUrl = chat['img']!;
+                final isAssetImage = imageUrl.startsWith('assets/');
 
                 return StatefulBuilder(
                   builder: (context, setState) {
@@ -370,7 +390,7 @@ class _NotificationsState extends State<Notifications>
                         }
 
                         return Primarywidget(
-                          img: chat['img']!,
+                          img: imageUrl,
                           name: chat['name']!,
                           lmsg: lastMessage,
                           time: lastMessageTime,
@@ -379,7 +399,14 @@ class _NotificationsState extends State<Notifications>
                               MaterialPageRoute(
                                 builder: (builder) => Chatinterface(
                                   id: chat['id']!,
-                                  avatar: Image.asset(chat['img']!),
+                                  avatar: isAssetImage
+                                      ? Image.asset(imageUrl)
+                                      : Image.network(
+                                          imageUrl,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Image.asset('assets/img/mohan.jpg');
+                                          },
+                                        ),
                                   userName: chat['name']!,
                                 ),
                               ),
@@ -429,9 +456,11 @@ class _NotificationsState extends State<Notifications>
               itemCount: filteredChats.length,
               itemBuilder: (context, index) {
                 final chat = filteredChats[index];
-                final chatId = chat['chat_id'];
+                final imageUrl = chat['img']!;
+                final isAssetImage = imageUrl.startsWith('assets/');
+
                 return Primarywidget(
-                  img: chat['img']!,
+                  img: imageUrl,
                   name: chat['name']!,
                   lmsg: chat['lmsg'] ?? 'Tap to chat',
                   time: '',
@@ -442,7 +471,15 @@ class _NotificationsState extends State<Notifications>
                         MaterialPageRoute(
                           builder: (builder) => Chatinterface(
                             id: chat['id']!,
-                            avatar: Image.asset(chat['img']!),
+                            avatar: isAssetImage
+                                ? Image.asset(imageUrl)
+                                : Image.network(
+                                    imageUrl,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Image.asset('assets/img/mohan.jpg');
+                                    },
+                                  ),
+                            userName: chat['name']!,
                           ),
                         ),
                       );
@@ -452,7 +489,7 @@ class _NotificationsState extends State<Notifications>
                         MaterialPageRoute(
                           builder: (builder) => Chatforrequested(
                             id: chat['id']!,
-                            img: chat['img']!,
+                            img: imageUrl,
                           ),
                         ),
                       );
@@ -500,8 +537,11 @@ class _NotificationsState extends State<Notifications>
                     itemCount: incomingRequests.length,
                     itemBuilder: (context, index) {
                       final chat = incomingRequests[index];
+                      final imageUrl = chat['img']!;
+                      final isAssetImage = imageUrl.startsWith('assets/');
+
                       return Primarywidget(
-                        img: chat['img']!,
+                        img: imageUrl,
                         name: chat['name']!,
                         lmsg: "Status: ${chat['lmsg']}",
                         time: '',
@@ -510,7 +550,7 @@ class _NotificationsState extends State<Notifications>
                             MaterialPageRoute(
                               builder: (builder) => Chatforrequested(
                                 id: chat['id']!,
-                                img: chat['img']!,
+                                img: imageUrl,
                               ),
                             ),
                           );
@@ -551,8 +591,10 @@ class _NotificationsState extends State<Notifications>
                     itemCount: outgoingRequests.length,
                     itemBuilder: (context, index) {
                       final chat = outgoingRequests[index];
+                      final imageUrl = chat['img']!;
+
                       return Primarywidget(
-                        img: chat['img']!,
+                        img: imageUrl,
                         name: chat['name']!,
                         lmsg: "Status: ${chat['lmsg']}",
                         time: '',

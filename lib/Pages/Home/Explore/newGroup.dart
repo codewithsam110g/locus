@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:locus/widgets/button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import "package:locus/Utils/cloudinary.dart";
 
 class Newgroup extends StatefulWidget {
   @override
@@ -41,7 +42,7 @@ class _NewgroupState extends State<Newgroup> {
       _descriptionError = _descriptionController.text.isEmpty
           ? 'Please enter a description'
           : null;
-      //_logoError = _selectedImage == null ? 'Please select a logo' : null;
+      _logoError = _selectedImage == null ? 'Please select a logo' : null;
       _tagError = _selectedTag == null ? 'Please select a tag' : null;
       isValid = _titleError == null &&
           _descriptionError == null &&
@@ -90,6 +91,8 @@ class _NewgroupState extends State<Newgroup> {
     final com_id = title.replaceAll(" ", "_");
     final userId = supabase.auth.currentUser!.id;
 
+    String? imgURL = await uploadFile(_selectedImage);
+
     // Fetch the user's profile
     final prof = await supabase
         .from("profile")
@@ -116,7 +119,8 @@ class _NewgroupState extends State<Newgroup> {
       "tags": tags,
       "title": title,
       "desc": desc,
-      "location": locationData
+      "location": locationData,
+      "logo_link":imgURL,
     });
 
     await supabase
@@ -278,11 +282,11 @@ class _NewgroupState extends State<Newgroup> {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[100], 
+                backgroundColor: Colors.grey[100],
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10), 
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
             ),

@@ -40,24 +40,12 @@ class _PrimarywidgetState extends State<Primarywidget> {
                     child: Container(
                       height: 50,
                       width: 50,
-                      child: Image.asset(widget.img),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(50),
                       ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 35,
-                  child: Container(
-                    child: Center(
-                      child: Text('2'),
-                    ),
-                    height: 20,
-                    width: 20,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondary,
-                      borderRadius: BorderRadius.circular(50),
+                      child: widget.img.contains("asset")
+                          ? Image.asset(widget.img)
+                          : Image.network(widget.img),
                     ),
                   ),
                 ),

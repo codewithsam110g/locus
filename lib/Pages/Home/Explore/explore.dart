@@ -193,8 +193,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                 'name': item['title'],
                 'description': item['desc'],
                 'tag': item['tags'],
-                'img':
-                    'assets/img/mohan.jpg', // or use an image from the record if available
+                'img': item['logo_link'] ?? 'assets/img/clubs.jpg', // or use an image from the record if available
                 'com_id': item['com_id']
               })
           .toList();
@@ -388,7 +387,7 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                       ],
                     ),
                   ),
-                  if (!isSearch)
+                  if (!isSearch && !isAdmin)
                     Positioned(
                       bottom: 100,
                       right: 30,

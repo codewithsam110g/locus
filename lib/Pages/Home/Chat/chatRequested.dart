@@ -66,7 +66,7 @@ class _ChatforrequestedState extends State<Chatforrequested> {
         MaterialPageRoute(
           builder: (builder) => Chatinterface(
             id: widget.id,
-            avatar: Image.asset(widget.img),
+            avatar: widget.img.contains("asset")?Image.asset(widget.img):Image.network(widget.img),
           ),
         ),
       );

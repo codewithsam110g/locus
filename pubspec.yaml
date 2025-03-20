@@ -48,6 +48,11 @@ dependencies:
   flutter_map_marker_popup: ^7.0.0
   timeago: ^3.2.2
   package_info_plus: ^8.3.0
+  flutter_launcher_icons: ^0.14.3
+  cloudinary_url_gen: ^1.7.0
+  cloudinary_api: ^1.1.0
+  cloudinary: ^1.2.0
+  share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:
@@ -79,3 +84,8 @@ flutter:
      - family: Electrolize
        fonts:
          - asset: assets/fonts/electrolize-regular.ttf
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/img/logo.png"  # Path to your icon

@@ -18,6 +18,7 @@ class _AdminviewState extends State<Adminview> {
   String groupName = "Group Name";
   String com_id = "";
   bool isLoading = true;
+  String imgURL = 'assets/img/mohan.jpg';
 
   @override
   void initState() {
@@ -36,6 +37,7 @@ class _AdminviewState extends State<Adminview> {
     setState(() {
       com_id = comData['com_id'];
       groupName = comData['community']['title'];
+      imgURL = comData['community']['logo_link'];
     });
 
     fetchMessages();
@@ -96,8 +98,10 @@ class _AdminviewState extends State<Adminview> {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            const CircleAvatar(
-              backgroundImage: AssetImage('assets/img/mohan.jpg'),
+            CircleAvatar(
+              backgroundImage: imgURL.contains("asset")
+                  ? AssetImage(imgURL)
+                  : NetworkImage(imgURL),
             ),
             const SizedBox(width: 10),
             Text(

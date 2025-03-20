@@ -52,26 +52,6 @@ class _MainscreenState extends State<Mainscreen> {
     });
   }
 
-  void _showPopupDialog(String? title, String? body) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title ?? "New Notification"),
-          content: Text(body ?? "You have received a new message."),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text("OK"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   void initState() {
     super.initState();

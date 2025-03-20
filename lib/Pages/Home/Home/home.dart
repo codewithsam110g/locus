@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:locus/Pages/Home/Explore/userView.dart';
 import 'package:locus/Pages/Home/Home/profile.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
@@ -131,15 +132,26 @@ class _HomeState extends State<Home> {
           _currentLocation!.longitude, communityLat, communityLong);
       if (distance <= _selectedRadius) {
         filteredMarkers.add({
+          'id': community['id'] ?? '',
           'title': community['title'] ?? 'Community',
           'lat': communityLat,
-          'long': communityLong
+          'long': communityLong,
+          'com_id':community['com_id'],
         });
       }
     }
     setState(() {
       _communityMarkers = filteredMarkers;
     });
+  }
+  
+  void _onMarkerTap(String comId,String name) {
+   
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Userview(id: comId,name:name),
+      ),
+    );
   }
 
   @override
@@ -212,16 +224,44 @@ class _HomeState extends State<Home> {
                                       size: 40, color: Colors.red),
                                 ),
                               ),
-                              // Community markers (green)
+                              // Community markers (green) with names and click handlers
                               ..._communityMarkers.map((community) => Marker(
                                     point: LatLng(
                                         community['lat'], community['long']),
-                                    width: 40,
-                                    height: 40,
-                                    child: Tooltip(
-                                      message: community['title'],
-                                      child: const Icon(Icons.location_on,
-                                          size: 40, color: Colors.green),
+                                    width: 80,
+                                    height: 70,
+                                    child: GestureDetector(
+                                      onTap: () => _onMarkerTap(community['com_id'],community['title']),
+                                      child: Column(
+                                        children: [
+                                          const Icon(
+                                            Icons.location_on,
+                                            size: 40,
+                                            color: Colors.green,
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.8),
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(color: Colors.green),
+                                            ),
+                                            child: Text(
+                                              community['title'],
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   )),
                             ],

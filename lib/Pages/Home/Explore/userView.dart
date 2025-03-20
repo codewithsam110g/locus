@@ -20,24 +20,41 @@ class _UserviewState extends State<Userview> {
   bool isLoading = true;
 
   final supabase = Supabase.instance.client;
+  String imgURL = 'assets/img/mohan.jpg';
 
   @override
   void initState() {
     super.initState();
+    setupListener();
   }
 
-  
-
-  Future<void> fetchMessages() async {
-    final fetchedMessages = await supabase
-        .from("community_messages")
-        .select("message, created_at")
-        .eq("com_id", widget.id)
-        .order("created_at", ascending: true);
-
-    setState(() {
-      messages = fetchedMessages;
-      isLoading = false;
+  Future<void> setupListener() async {
+    // Listen for changes to the community_messages table for this specific community
+    supabase
+        .from('community_messages')
+        .stream(primaryKey: ['id'])
+        .eq('com_id', widget.id)
+        .order('created_at',ascending:true)
+        .listen((List<Map<String, dynamic>> data) {
+      if (mounted) {
+        setState(() {
+          messages = data;
+        });
+      }
+    });
+    
+    // Listen for changes to the community table to update the logo
+    supabase
+        .from('community')
+        .stream(primaryKey: ['com_id'])
+        .eq('com_id', widget.id)
+        .listen((List<Map<String, dynamic>> data) {
+      if (data.isNotEmpty && mounted) {
+        setState(() {
+          imgURL = data[0]['logo_link'] as String;
+          isLoading = false;
+        });
+      }
     });
   }
 
@@ -55,8 +72,10 @@ class _UserviewState extends State<Userview> {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            const CircleAvatar(
-              backgroundImage: AssetImage("assets/img/mohan.jpg"),
+            CircleAvatar(
+              backgroundImage: imgURL.contains("asset")
+                  ? AssetImage(imgURL)
+                  : NetworkImage(imgURL),
             ),
             const SizedBox(width: 10),
             Text(
@@ -108,7 +127,7 @@ class _UserviewState extends State<Userview> {
                   const Padding(
                     padding: EdgeInsets.all(10.0),
                     child: Text(
-                      "Messaging is disabled in this chat.",
+                      "Messages are only sent by Comunity Admin.",
                       style: TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                   ),

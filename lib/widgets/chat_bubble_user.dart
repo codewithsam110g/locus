@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 
 class ChatBubbleUser extends StatelessWidget {
   final String message;
@@ -40,13 +39,15 @@ class ChatBubbleUser extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Flexible(
-              child: Stack(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 50.0),
-                    child: Container(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 5),
+                padding: const EdgeInsets.only(right: 50.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Message bubble
+                    Container(
                       padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.symmetric(vertical: 5),
                       decoration: BoxDecoration(
                         color: Colors.grey[300],
                         borderRadius: const BorderRadius.only(
@@ -58,31 +59,26 @@ class ChatBubbleUser extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text(
+                            message,
+                            style: textStyle,
+                          ),
+                          // Timestamp
                           Padding(
-                            padding: multiLineText
-                                ? EdgeInsets.only(bottom: 10)
-                                : const EdgeInsets.only(right: 65.0),
+                            padding: const EdgeInsets.only(top:4.0),
                             child: Text(
-                              message,
-                              style: textStyle,
+                              time,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black54,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  Positioned(
-                    bottom: 10,
-                    right: 60,
-                    child: Text(
-                      time,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

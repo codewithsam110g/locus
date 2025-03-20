@@ -13,7 +13,7 @@ class ChatBubble extends StatelessWidget {
   bool isMultiline(String text, double maxWidth, TextStyle style) {
     final TextPainter textPainter = TextPainter(
       text: TextSpan(text: text, style: style),
-      maxLines: 2, // Check if the text exceeds two lines
+      maxLines: 4, // Check if the text exceeds two lines
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: maxWidth);
 
@@ -39,49 +39,44 @@ class ChatBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Flexible(
-              child: Stack(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    margin: const EdgeInsets.only(left: 60), // Space for the timestamp
-                    constraints: BoxConstraints(
-                      maxWidth: screenWidth * 0.7, // Prevents overflow
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(12),
-                        bottomRight: Radius.circular(12),
-                        topLeft: Radius.circular(12),
+              child: Container(
+                margin:
+                    const EdgeInsets.only(left: 60), // Space for wider messages
+                constraints: BoxConstraints(
+                  maxWidth: screenWidth * 0.7, // Prevents overflow
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(12),
+                    bottomRight: Radius.circular(12),
+                    topLeft: Radius.circular(12),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Message content
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Text(
+                        message,
+                        style: textStyle,
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: multiLineText
-                              ? EdgeInsets.zero
-                              : const EdgeInsets.only(right: 60.0),
-                          child: Text(
-                            message,
-                            style: textStyle,
-                          ),
+                    // Timestamp
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8, bottom: 4,left:8),
+                      child: Text(
+                        time,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
                         ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 5,
-                    right: 5,
-                    child: Text(
-                      time,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

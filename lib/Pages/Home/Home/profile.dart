@@ -17,6 +17,7 @@ class Profile extends StatefulWidget {
 class _ProfileState extends State<Profile> {
   String? name;
   String? email;
+  String? photoURL;
   Color? avatarColor;
   String appVersion = "";
   String? dob;
@@ -33,7 +34,7 @@ class _ProfileState extends State<Profile> {
     final user_id = supabase.auth.currentUser!.id;
     final prof = await supabase
         .from('profile')
-        .select("name,email,dob")
+        .select("name,email,dob,image_link")
         .eq("user_id", user_id)
         .maybeSingle();
 
@@ -45,12 +46,10 @@ class _ProfileState extends State<Profile> {
       dob = birthdayValue.toString();
     }
 
-    print(dob);
-    print(prof?["dob"]);
-
     setState(() {
       name = prof?["name"] as String?;
       email = prof?["email"] as String?;
+      photoURL = prof?["image_link"] as String?;
       dob = dob;
       avatarColor = getRandomColor();
     });
@@ -108,18 +107,23 @@ class _ProfileState extends State<Profile> {
         child: Column(
           children: [
             CircleAvatar(
-              backgroundColor: avatarColor ?? Colors.grey,
+              backgroundColor:
+                  photoURL == null ? (avatarColor ?? Colors.grey) : null,
+              backgroundImage:
+                  photoURL != null ? NetworkImage(photoURL!) : null,
               radius: 50,
-              child: Text(
-                (name != null && name!.isNotEmpty)
-                    ? name![0].toUpperCase()
-                    : '?',
-                style: const TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
+              child: photoURL == null
+                  ? Text(
+                      (name != null && name!.isNotEmpty)
+                          ? name![0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    )
+                  : null,
             ),
             SizedBox(height: 15),
             Text(
@@ -144,14 +148,19 @@ class _ProfileState extends State<Profile> {
               children: [
                 ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.of(context).push(
+                    Navigator.of(context)
+                        .push(
                       MaterialPageRoute(
                         builder: (context) => Editprofile(
                           name: name ?? 'unknown',
                           dob: dob ?? 'unknown',
+                          photoURL: photoURL ?? "NAN",
                         ),
                       ),
-                    );
+                    )
+                        .then((val) {
+                      doStuff();
+                    });
                   },
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
@@ -169,7 +178,9 @@ class _ProfileState extends State<Profile> {
                   ),
                   label: Text(
                     "Edit Profile",
-                    style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontSize: 16),
                   ),
                 ),
                 ElevatedButton.icon(

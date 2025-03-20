@@ -34,6 +34,7 @@ class _ChatState extends State<Chat> {
     _listenForUpdates();
     _listenForLocationUpdates();
   }
+  
 
   /// Retrieves the current user's location settings from their profile.
   Future<void> _setLocation() async {
@@ -87,72 +88,84 @@ class _ChatState extends State<Chat> {
     setState(() {
       isLoading = true;
     });
-
     try {
       final currentUserId = supabase.auth.currentUser!.id;
-
       // Call stored procedure in Supabase to get nearby messages
-      // Using the current location values stored in the state
       final response = await supabase.rpc('get_nearby_messages', params: {
         'lat': currentUserLat,
         'long': currentUserLong,
         'max_distance': distanceThreshold
       });
 
-      // Fetch request data for the current user (involving any other user)
+      // Fetch request data for the current user
       final requestsData = await supabase
           .from('requests')
           .select('requested_uid, reciever_uid, status')
           .or('requested_uid.eq.$currentUserId,reciever_uid.eq.$currentUserId');
 
-      // Update state with messages and determine isActive status using requests table
+      // Process messages and fetch photo URLs BEFORE setState
+      List<Map<String, dynamic>> processedChats = [];
+      for (var message in response) {
+        DateTime dateTime = DateTime.parse(message["created_at"]).toLocal();
+        String formattedDateTime =
+            "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} "
+            "${dateTime.day.toString().padLeft(2, '0')}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.year}";
+
+        // The other user's id
+        String otherId = message['user_id'];
+
+        // Fetch photo URL outside of setState
+        var resp = await supabase
+            .from("profile")
+            .select("image_link")
+            .eq("user_id", otherId)
+            .single();
+            
+        String photoURL = resp['image_link'] != null ? resp['image_link'] as String : '';
+
+        // Determine the request status
+        String requestStatus = "";
+        if (requestsData != null) {
+          for (var req in requestsData) {
+            if ((req['requested_uid'] == currentUserId &&
+                    req['reciever_uid'] == otherId) ||
+                (req['requested_uid'] == otherId &&
+                    req['reciever_uid'] == currentUserId)) {
+              requestStatus = req['status'];
+              break;
+            }
+          }
+        }
+
+        // Set isActive based on request status
+        String isActive;
+        if (requestStatus.isNotEmpty) {
+          if (requestStatus == 'pending') {
+            isActive = "pending";
+          } else if (requestStatus == 'accept') {
+            isActive = "true";
+          } else {
+            isActive = "false";
+          }
+        } else {
+          isActive = "false";
+        }
+
+        processedChats.add({
+          'name': message['name'] ?? 'Unknown',
+          'text': message['message'],
+          'type': message['user_id'] == currentUserId ? 'send' : 'receive',
+          'isActive': isActive,
+          'created_at': formattedDateTime,
+          'uid': otherId,
+          'image_link': photoURL
+        });
+      }
+
+      // Now update the state with the fully processed data
       if (mounted) {
         setState(() {
-          chats = response.map<Map<String, dynamic>>((message) {
-            DateTime dateTime = DateTime.parse(message["created_at"]).toLocal();
-            String formattedDateTime =
-                "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} "
-                "${dateTime.day.toString().padLeft(2, '0')}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.year}";
-            // The other user's id (person we want to chat with)
-            String otherId = message['user_id'];
-
-            // Determine the request status between currentUserId and otherId.
-            String requestStatus = "";
-            if (requestsData != null) {
-              for (var req in requestsData) {
-                if ((req['requested_uid'] == currentUserId &&
-                        req['reciever_uid'] == otherId) ||
-                    (req['requested_uid'] == otherId &&
-                        req['reciever_uid'] == currentUserId)) {
-                  requestStatus = req['status'];
-                  break;
-                }
-              }
-            }
-
-            // Set isActive based on request status.
-            String isActive;
-            if (requestStatus.isNotEmpty) {
-              if (requestStatus == 'pending') {
-                isActive = "pending";
-              } else if (requestStatus == 'accept') {
-                isActive = "true";
-              } else {
-                isActive = "false";
-              }
-            } else {
-              isActive = "false";
-            }
-
-            return {
-              'name': message['name'] ?? 'Unknown',
-              'text': message['message'],
-              'type': message['user_id'] == currentUserId ? 'send' : 'receive',
-              'isActive': isActive,
-              'created_at': formattedDateTime,
-              'uid': otherId
-            };
-          }).toList();
+          chats = processedChats;
           isLoading = false;
         });
       }
@@ -237,6 +250,12 @@ class _ChatState extends State<Chat> {
         name.substring(0, 1).toUpperCase(),
         style: const TextStyle(color: Colors.white),
       ),
+    );
+  } 
+  
+  Widget buildAvatarWithNetworkImage(String url) {
+    return CircleAvatar(
+      backgroundImage: NetworkImage(url)
     );
   }
 
@@ -330,10 +349,11 @@ class _ChatState extends State<Chat> {
                                   final chat = chats[index];
                                   final bool isAccept =
                                       chat['isActive'] == "true";
+                                  final bool useImage =
+                                      chat['image_link'] != "";
                                   return Chatcontainer(
                                     type: chat['type'] as String,
-                                    // Instead of using a static image, we generate an avatar.
-                                    avatar: buildAvatar(chat['name'] as String),
+                                    avatar: useImage ? buildAvatarWithNetworkImage(chat['image_link']): buildAvatar(chat['name'] as String),
                                     name: chat['name'] as String,
                                     text: chat['text'] as String,
                                     date: chat["created_at"] as String,

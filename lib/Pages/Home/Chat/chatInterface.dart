@@ -128,7 +128,7 @@ class _ChatinterfaceState extends State<Chatinterface> {
 
       final data = await supabase
           .from("private_messages")
-          .select("message, sent_by, created_at")
+          .select("message, sent_by, created_at, hidden_by")
           .eq("chat_id", chatId)
           .order("created_at", ascending: true);
 
@@ -136,6 +136,14 @@ class _ChatinterfaceState extends State<Chatinterface> {
         List<Map<String, dynamic>> allMessages = [];
 
         for (var message in data) {
+          // Check if the current message is hidden for this user
+          List<String> hiddenBy = List<String>.from(message['hidden_by'] ?? []);
+
+          // Skip this message if it's hidden for the current user
+          if (hiddenBy.contains(currentUserId)) {
+            continue;
+          }
+
           final formattedTime = formatTimestamp(message['created_at']);
           final isCurrentUser = message['sent_by'] == currentUserId;
 
@@ -143,8 +151,7 @@ class _ChatinterfaceState extends State<Chatinterface> {
             "message": message['message'],
             "time": formattedTime,
             "isCurrentUser": isCurrentUser,
-            "timestamp":
-                message['created_at'], // Keep original timestamp for sorting
+            "timestamp": message['created_at'], // Keep original timestamp for sorting
           });
         }
 
@@ -154,8 +161,7 @@ class _ChatinterfaceState extends State<Chatinterface> {
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
-            _scrollController
-                .jumpTo(_scrollController.position.maxScrollExtent);
+            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
           }
         });
       }
@@ -222,13 +228,30 @@ class _ChatinterfaceState extends State<Chatinterface> {
 
   Future<void> _clearChat() async {
     try {
-      await supabase.from("private_messages").delete().eq("chat_id", chatId);
+      final userId = supabase.auth.currentUser!.id;
+      final allMessages = await supabase
+          .from("private_messages")
+          .select("id, hidden_by")
+          .eq("chat_id", chatId);
 
-      setState(() {
-        messages.clear(); // Clear messages list in UI
-      });
+      for (var message in allMessages) {
+        // Ensure 'hidden_by' is a List<String>
+        List<String> hiddenBy = List<String>.from(message['hidden_by'] ?? []);
 
-      print("Chat cleared successfully");
+        // Only update if the user ID isn't already in the list
+        if (!hiddenBy.contains(userId)) {
+          hiddenBy.add(userId);
+
+          // Update this specific message in the database
+          await supabase
+              .from("private_messages")
+              .update({'hidden_by': hiddenBy})
+              .eq('id', message['id']);
+        }
+      }
+
+      // After updating the database, refresh messages
+      await fetchMessages();
     } catch (error) {
       print("Error clearing chat: $error");
     }

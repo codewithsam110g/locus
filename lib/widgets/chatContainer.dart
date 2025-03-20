@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 class Chatcontainer extends StatefulWidget {
   /// Instead of an image asset, the new UI expects a custom avatar widget.
@@ -9,28 +10,33 @@ class Chatcontainer extends StatefulWidget {
   final String type;
   final String date;
 
-  const Chatcontainer({
-    Key? key,
-    required this.avatar,
-    required this.text,
-    required this.name,
-    required this.function,
-    required this.type,
-    required this.date
-  }) : super(key: key);
+  const Chatcontainer(
+      {Key? key,
+      required this.avatar,
+      required this.text,
+      required this.name,
+      required this.function,
+      required this.type,
+      required this.date})
+      : super(key: key);
 
   @override
   State<Chatcontainer> createState() => _ChatcontainerState();
 }
 
 class _ChatcontainerState extends State<Chatcontainer> {
+  void shareText(String text) {
+    Share.share(text);
+  }
+
   @override
   Widget build(BuildContext context) {
     // Determine if this message is sent by the current user.
     final bool isSend = widget.type == 'send';
 
     // For sent messages, use a green bubble; for received messages, use white.
-    final bubbleColor = isSend ? Theme.of(context).colorScheme.secondary : Colors.white;
+    final bubbleColor =
+        isSend ? Theme.of(context).colorScheme.secondary : Colors.white;
     final textColor = isSend ? Colors.black : Colors.black;
     final dateColor = isSend ? Colors.black : Colors.grey;
 
@@ -97,7 +103,9 @@ class _ChatcontainerState extends State<Chatcontainer> {
                       Row(
                         children: [
                           GestureDetector(
-                            onTap: () {},
+                            onTap: () {
+                              shareText("${widget.name} is Sharing This Text:\n${widget.text}\nAt Time:${widget.date}");
+                            },
                             child: Icon(
                               Icons.reply,
                               color: textColor,
@@ -125,5 +133,4 @@ class _ChatcontainerState extends State<Chatcontainer> {
       ),
     );
   }
-
 }
