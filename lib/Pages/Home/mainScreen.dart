@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:locus/Pages/Home/Chat/chat.dart';
 import 'package:locus/Pages/Home/Explore/explore.dart';
 import 'package:locus/Pages/Home/Home/home.dart';
@@ -45,9 +46,52 @@ class _MainscreenState extends State<Mainscreen> {
     FirebaseMessaging.onMessage.listen((payload) {
       final notif = payload.notification;
       if (notif != null) {
-        setState(() {
-          unseenCount++; // Increase unseen message count
-        });
+        // Check if the notification tag contains "Community"
+        if (payload.data['tag'] != null &&
+            payload.data['tag'] as String == "community") {
+          //print(payload.data['id']);
+          
+          //TODO: Implement onMessageTap from FCM and open Chats for Generic,
+          // Particular User for Private Message,
+          // Community for Community Message
+
+          // Show a local notification even if the app is open
+          final flutterLocalNotificationsPlugin =
+              FlutterLocalNotificationsPlugin();
+
+          // Define notification details
+          const androidPlatformChannelSpecifics = AndroidNotificationDetails(
+            'community_channel_id',
+            'Community Notifications',
+            channelDescription: 'Notifications for community messages',
+            importance: Importance.high,
+            priority: Priority.high,
+            showWhen: true,
+          );
+
+          const iOSPlatformChannelSpecifics = DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          );
+
+          const platformChannelSpecifics = NotificationDetails(
+            android: androidPlatformChannelSpecifics,
+            iOS: iOSPlatformChannelSpecifics,
+          );
+
+          // Show the notification
+          flutterLocalNotificationsPlugin.show(
+            DateTime.now().millisecond, // Random ID based on current time
+            notif.title,
+            notif.body,
+            platformChannelSpecifics,
+          );
+        } else {
+          setState(() {
+            unseenCount++;
+          });
+        }
       }
     });
   }

@@ -12,9 +12,9 @@ class Adminview extends StatefulWidget {
 class _AdminviewState extends State<Adminview> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _inputScrollController = ScrollController();
   List<Map<String, dynamic>> messages = [];
   final supabase = Supabase.instance.client;
-
   String groupName = "Group Name";
   String com_id = "";
   bool isLoading = true;
@@ -65,7 +65,7 @@ class _AdminviewState extends State<Adminview> {
 
     String messageText = _messageController.text.trim();
     _messageController.clear();
-
+    _inputScrollController.jumpTo(0);
     await supabase.from("community_messages").insert({
       "com_id": com_id,
       "message": messageText,
@@ -100,8 +100,8 @@ class _AdminviewState extends State<Adminview> {
           children: [
             CircleAvatar(
               backgroundImage: imgURL.contains("asset")
-                  ? AssetImage(imgURL)
-                  : NetworkImage(imgURL),
+                  ? AssetImage(imgURL) as ImageProvider
+                  : NetworkImage(imgURL) as ImageProvider,
             ),
             const SizedBox(width: 10),
             Text(
@@ -152,12 +152,39 @@ class _AdminviewState extends State<Adminview> {
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: "Type a message...",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(40),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      scrollbarTheme: ScrollbarThemeData(
+                        thumbVisibility: MaterialStateProperty.all(true),
+                        thickness: MaterialStateProperty.all(6),
+                        radius: const Radius.circular(10),
+                        thumbColor: MaterialStateProperty.all(Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0.6)),
+                        mainAxisMargin: 4,
+                        crossAxisMargin: 4,
+                      ),
+                    ),
+                    child: Scrollbar(
+                      controller: _inputScrollController,
+                      child: TextFormField(
+                        controller: _messageController,
+                        scrollController: _inputScrollController,
+                        minLines: 1,
+                        maxLines: 4,
+                        keyboardType: TextInputType.multiline,
+                        decoration: InputDecoration(
+                          hintText: "Type a message...",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        textInputAction: TextInputAction.newline,
                       ),
                     ),
                   ),

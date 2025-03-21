@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 class Chatcontainer extends StatefulWidget {
-  /// Instead of an image asset, the new UI expects a custom avatar widget.
   final Widget avatar;
   final String text;
   final String name;
@@ -10,23 +9,33 @@ class Chatcontainer extends StatefulWidget {
   final String type;
   final String date;
 
-  const Chatcontainer(
-      {Key? key,
-      required this.avatar,
-      required this.text,
-      required this.name,
-      required this.function,
-      required this.type,
-      required this.date})
-      : super(key: key);
+  const Chatcontainer({
+    Key? key,
+    required this.avatar,
+    required this.text,
+    required this.name,
+    required this.function,
+    required this.type,
+    required this.date,
+  }) : super(key: key);
 
   @override
   State<Chatcontainer> createState() => _ChatcontainerState();
 }
 
 class _ChatcontainerState extends State<Chatcontainer> {
+  // Create a ScrollController instance
+  final ScrollController _scrollController = ScrollController();
+  
   void shareText(String text) {
     Share.share(text);
+  }
+  
+  // Dispose the controller when the widget is removed
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -76,15 +85,29 @@ class _ChatcontainerState extends State<Chatcontainer> {
                     ),
                   ),
                   const SizedBox(height: 5),
-                  // Message text.
-                  Text(
-                    widget.text.isNotEmpty
-                        ? widget.text
-                        : 'No message available',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: textColor,
+                  // Message text with scrolling capability
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxHeight: 120, // Set maximum height for the text area
+                    ),
+                    child: Scrollbar(
+                      controller: _scrollController, // Add the controller here
+                      thumbVisibility: true,
+                      thickness: 6,
+                      radius: const Radius.circular(10),
+                      child: SingleChildScrollView(
+                        controller: _scrollController, // Also add it here
+                        physics: const BouncingScrollPhysics(),
+                        child: Text(
+                          widget.text.isNotEmpty
+                              ? widget.text
+                              : 'No message available',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: textColor,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 5),

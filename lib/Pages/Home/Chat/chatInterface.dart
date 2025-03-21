@@ -24,6 +24,7 @@ class Chatinterface extends StatefulWidget {
 class _ChatinterfaceState extends State<Chatinterface> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _inputScrollController = ScrollController();
   bool isTyping = false;
   List<Map<String, dynamic>> messages = []; // Combined messages list
   String? userName;
@@ -151,7 +152,8 @@ class _ChatinterfaceState extends State<Chatinterface> {
             "message": message['message'],
             "time": formattedTime,
             "isCurrentUser": isCurrentUser,
-            "timestamp": message['created_at'], // Keep original timestamp for sorting
+            "timestamp":
+                message['created_at'], // Keep original timestamp for sorting
           });
         }
 
@@ -161,7 +163,8 @@ class _ChatinterfaceState extends State<Chatinterface> {
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+            _scrollController
+                .jumpTo(_scrollController.position.maxScrollExtent);
           }
         });
       }
@@ -196,7 +199,7 @@ class _ChatinterfaceState extends State<Chatinterface> {
 
       // Clear the text field
       _controller.clear();
-
+      _inputScrollController.jumpTo(0);
       // No need to manually update messages as the stream will trigger fetchMessages()
     } catch (error) {
       print("Error sending message: $error");
@@ -245,8 +248,7 @@ class _ChatinterfaceState extends State<Chatinterface> {
           // Update this specific message in the database
           await supabase
               .from("private_messages")
-              .update({'hidden_by': hiddenBy})
-              .eq('id', message['id']);
+              .update({'hidden_by': hiddenBy}).eq('id', message['id']);
         }
       }
 
@@ -507,23 +509,44 @@ class _ChatinterfaceState extends State<Chatinterface> {
               padding: const EdgeInsets.only(left: 10, right: 10, bottom: 8),
               child: Row(
                 children: [
+                  // And update your TextField code
                   Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      decoration: InputDecoration(
-                        hintText: "Type a message...",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(40),
+                    child: Theme(
+                      data: Theme.of(context).copyWith(
+                        scrollbarTheme: ScrollbarThemeData(
+                          thumbVisibility: MaterialStateProperty.all(true),
+                          thickness: MaterialStateProperty.all(6),
+                          radius: const Radius.circular(10),
+                          thumbColor: MaterialStateProperty.all(
+                              Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withOpacity(0.6)),
+                          mainAxisMargin: 4,
+                          crossAxisMargin: 4,
                         ),
                       ),
-                      onTap: () {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (_scrollController.hasClients) {
-                            _scrollController.jumpTo(
-                                _scrollController.position.maxScrollExtent);
-                          }
-                        });
-                      },
+                      child: Scrollbar(
+                        controller: _inputScrollController,
+                        child: TextFormField(
+                          controller: _controller,
+                          scrollController: _inputScrollController,
+                          minLines: 1,
+                          maxLines: 4,
+                          keyboardType: TextInputType.multiline,
+                          decoration: InputDecoration(
+                            hintText: "Type a message...",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                          textInputAction: TextInputAction.newline,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),

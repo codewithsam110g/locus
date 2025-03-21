@@ -345,50 +345,66 @@ class _NotificationsState extends State<Notifications>
                 final chatId = chat['chat_id'];
                 final imageUrl = chat['img']!;
                 final isAssetImage = imageUrl.startsWith('assets/');
-
+  
                 return StatefulBuilder(
                   builder: (context, setState) {
                     Timer? timer;
-
+  
                     void startTimer(DateTime messageTime) {
                       Duration updateInterval = _getUpdateInterval(messageTime);
-
+  
                       timer?.cancel(); // Cancel any existing timer
-
+  
                       timer = Timer.periodic(updateInterval, (timer) {
                         setState(() {}); // Trigger UI update
                       });
                     }
-
+  
                     return FutureBuilder(
                       future: supabase
                           .from('private_messages')
-                          .select('message, created_at')
+                          .select('message, created_at, hidden_by')
                           .eq('chat_id', chatId as Object)
                           .order('created_at', ascending: false)
-                          .limit(1)
-                          .maybeSingle(),
+                          .limit(20), // Fetch more messages to find non-hidden ones
                       builder: (context, snapshot) {
                         String lastMessage = "Tap to chat";
                         String lastMessageTime = "";
-
+  
                         if (snapshot.hasData && snapshot.data != null) {
-                          lastMessage =
-                              snapshot.data?['message'] ?? "Tap to chat";
-                          if (lastMessage.length > 15) {
-                            lastMessage = lastMessage.substring(0, 10) + "...";
+                          // Get current user's ID
+                          final currentUserId = supabase.auth.currentUser?.id;
+                          
+                          // Find the first message not hidden by current user
+                          final messages = snapshot.data as List;
+                          
+                          // Using a manual loop instead of firstWhere to avoid orElse type issues
+                          Map<String, dynamic>? visibleMessage;
+                          for (var msg in messages) {
+                            final hiddenBy = (msg['hidden_by'] as List?) ?? [];
+                            if (!hiddenBy.contains(currentUserId)) {
+                              visibleMessage = msg;
+                              break;
+                            }
                           }
-
-                          if (snapshot.data?['created_at'] != null) {
-                            DateTime messageTime =
-                                DateTime.parse(snapshot.data?['created_at'])
-                                    .toLocal();
-                            lastMessageTime = timeago.format(messageTime);
-
-                            startTimer(messageTime); // Start auto-updates
+  
+                          if (visibleMessage != null) {
+                            lastMessage = visibleMessage['message'] ?? "Tap to chat";
+                            if (lastMessage.length > 15) {
+                              lastMessage = lastMessage.substring(0, 10) + "...";
+                            }
+  
+                            if (visibleMessage['created_at'] != null) {
+                              DateTime messageTime =
+                                  DateTime.parse(visibleMessage['created_at'])
+                                      .toLocal();
+                              lastMessageTime = timeago.format(messageTime);
+  
+                              startTimer(messageTime); // Start auto-updates
+                            }
                           }
                         }
-
+  
                         return Primarywidget(
                           img: imageUrl,
                           name: chat['name']!,
@@ -411,7 +427,7 @@ class _NotificationsState extends State<Notifications>
                                 ),
                               ),
                             );
-
+  
                             _fetchChats();
                           },
                         );

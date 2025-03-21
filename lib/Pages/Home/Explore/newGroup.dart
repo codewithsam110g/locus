@@ -18,6 +18,7 @@ class _NewgroupState extends State<Newgroup> {
   XFile? _selectedImage;
   String? _selectedTag;
   String? _titleError;
+  bool _isLoading = false; // Added loading state
 
   String? _logoError;
   String? _tagError;
@@ -85,72 +86,117 @@ class _NewgroupState extends State<Newgroup> {
   }
 
   Future<void> requestCommunity() async {
-    final title = _titleController.text.trim();
-    final desc = _descriptionController.text.trim();
-    final tags = _selectedTag!.trim();
-    final com_id = title.replaceAll(" ", "_");
-    final userId = supabase.auth.currentUser!.id;
-
-    String? imgURL = await uploadFile(_selectedImage);
-
-    // Fetch the user's profile
-    final prof = await supabase
-        .from("profile")
-        .select("com_id")
-        .eq("user_id", userId)
-        .single();
-
-    if (prof["com_id"] != null) {
-      Fluttertoast.showToast(msg: "You already have a group!");
-      return;
-    }
-
-    // Get the current location
-    Position? position = await _getCurrentLocation();
-    if (position == null) {
-      return; // Stop execution if location is not available
-    }
-
-    final locationData = {"lat": position.latitude, "long": position.longitude};
-
-    // Insert into database
-    await supabase.from("community").insert({
-      "com_id": com_id,
-      "tags": tags,
-      "title": title,
-      "desc": desc,
-      "location": locationData,
-      "logo_link":imgURL,
+    setState(() {
+      _isLoading = true; // Start loading
     });
 
-    await supabase
-        .from("profile")
-        .update({"com_id": com_id}).eq("user_id", userId);
+    try {
+      final title = _titleController.text.trim();
+      final desc = _descriptionController.text.trim();
+      final tags = _selectedTag!.trim();
+      final com_id = title.replaceAll(" ", "_");
+      final userId = supabase.auth.currentUser!.id;
+
+      String? imgURL = await uploadFile(_selectedImage);
+
+      // Fetch the user's profile
+      final prof = await supabase
+          .from("profile")
+          .select("com_id")
+          .eq("user_id", userId)
+          .single();
+
+      if (prof["com_id"] != null) {
+        Fluttertoast.showToast(msg: "You already have a group!");
+        return;
+      }
+
+      // Get the current location
+      Position? position = await _getCurrentLocation();
+      if (position == null) {
+        return; // Stop execution if location is not available
+      }
+
+      final locationData = {"lat": position.latitude, "long": position.longitude};
+
+      await supabase.from("community").insert({
+        "com_id": com_id,
+        "tags": tags,
+        "title": title,
+        "desc": desc,
+        "location": locationData,
+        "logo_link": imgURL,
+      });
+
+      await supabase
+          .from("profile")
+          .update({"com_id": com_id}).eq("user_id", userId);
+      
+      
+      Fluttertoast.showToast(msg: "Group request submitted successfully!");
+    } catch (e) {
+      Fluttertoast.showToast(msg: "Error: ${e.toString()}");
+    } finally {
+      setState(() {
+        _isLoading = false; // End loading regardless of outcome
+      });
+    }
   }
 
-  // Function to show a dialog box
+  // Function to show a dialog box with loading indicator
   void _showConfirmationDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmation'),
-        content: const Text('Are you sure you want to request the new group?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              await requestCommunity();
-              Navigator.pop(context);
-            },
-            child: const Text('Request'),
-          ),
-        ],
-      ),
+      barrierDismissible: false, // Prevent dismissing by tapping outside
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Confirmation'),
+              content: _isLoading
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Creating your group...'),
+                      ],
+                    )
+                  : const Text('Are you sure you want to request the new group?'),
+              actions: _isLoading
+                  ? [] // No actions while loading
+                  : [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          // Update dialog state to show loading
+                          setDialogState(() {
+                            _isLoading = true;
+                          });
+                          
+                          // Request community
+                          await requestCommunity();
+                          
+                          // Close dialog after operation is complete
+                          if (mounted) {
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: const Text('Request'),
+                      ),
+                    ],
+            );
+          }
+        );
+      },
     ).then((value) {
-      Navigator.pop(context);
+      // Only pop the main screen if the operation was successful
+      if (!_isLoading) {
+        Navigator.pop(context);
+      }
     });
   }
 
