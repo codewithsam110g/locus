@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:locus/Pages/Home/mainScreen.dart';
 import 'package:locus/widgets/Buttons/newButton.dart';
 import 'package:locus/widgets/inputfeilds.dart';
 import 'package:locus/Pages/LoginRegister/loginMain.dart';
@@ -91,243 +90,258 @@ class _Register2State extends State<Register2> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(40.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 40.0),
-                child: Image.asset('assets/img/locus1.png'),
-              ),
-              Text(
-                'Register Now!',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).colorScheme.primary,
-                  fontFamily: 'Electrolize',
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text("Cant Go Back Untill The Registration is Completed!"),
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(40.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 40.0),
+                  child: Image.asset('assets/img/locus1.png'),
                 ),
-              ),
-              Form(
-                key: _formKey,
-                autovalidateMode: _isSubmitted
-                    ? AutovalidateMode.always
-                    : AutovalidateMode.disabled,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 30),
-                    Inputfields(
-                      title: 'Name',
-                      emoji: const Icon(Icons.email),
-                      controller: _nameController,
-                      onTap: (value) {
-                        return null;
-                      },
-                      keyBoard1: false,
-                      obscureText: false,
-                    ),
-                    if (_nameError != null)
-                      Text(
-                        _nameError!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                Text(
+                  'Register Now!',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.primary,
+                    fontFamily: 'Electrolize',
+                  ),
+                ),
+                Form(
+                  key: _formKey,
+                  autovalidateMode: _isSubmitted
+                      ? AutovalidateMode.always
+                      : AutovalidateMode.disabled,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 30),
+                      Inputfields(
+                        title: 'Name',
+                        emoji: const Icon(Icons.email),
+                        controller: _nameController,
+                        onTap: (value) {
+                          return null;
+                        },
+                        keyBoard1: false,
+                        obscureText: false,
                       ),
-                    const SizedBox(height: 30),
-                    Inputfields(
-                      title: 'Birthday',
-                      emoji: const Icon(Icons.cake_outlined),
-                      controller: _bdayController,
-                      onTap: (value) {
-                        return null;
-                      },
-                      keyBoard1: false,
-                      obscureText: false,
-                      suffixIcon:
-                          Icons.calendar_today, // ✅ Pass the calendar icon
-                      suffixIconTap: () async {
-                        // ✅ Handle date picker
-                        DateTime? selectedDate = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime(1900),
-                          lastDate: DateTime.now(),
-                        );
-                        if (selectedDate != null) {
-                          setState(() {
-                            _bdayController.text =
-                                '${selectedDate.toLocal()}'.split(' ')[0];
-                          });
-                        }
-                      },
-                    ),
-                    if (_bdayError != null)
-                      Text(
-                        _bdayError!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    const SizedBox(height: 25),
-                    Focus(
-                      onFocusChange: (hasFocus) {
-                        setState(() {
-                          _isFocused = hasFocus;
-                        });
-                      },
-                      child: DropdownButtonFormField<String>(
-                        decoration: InputDecoration(
-                          labelText: 'Gender',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.person),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.black
-                                  .withOpacity(_isFocused ? 1 : 0.5),
-                              width: 1.5,
-                              style: BorderStyle.solid,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.black
-                                  .withOpacity(_isFocused ? 1 : 0.5),
-                              width: 1.5,
-                              style: BorderStyle.solid,
-                            ),
-                          ),
+                      if (_nameError != null)
+                        Text(
+                          _nameError!,
+                          style:
+                              const TextStyle(color: Colors.red, fontSize: 12),
                         ),
-                        value: _genderController.text.isNotEmpty
-                            ? _genderController.text
-                            : null,
-                        items: ['Male', 'Female', 'Other']
-                            .map((gender) => DropdownMenuItem(
-                                  value: gender,
-                                  child: Text(gender),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _genderController.text = value!;
-                          });
+                      const SizedBox(height: 30),
+                      Inputfields(
+                        title: 'Birthday',
+                        emoji: const Icon(Icons.cake_outlined),
+                        controller: _bdayController,
+                        onTap: (value) {
+                          return null;
+                        },
+                        keyBoard1: false,
+                        obscureText: false,
+                        suffixIcon:
+                            Icons.calendar_today, // ✅ Pass the calendar icon
+                        suffixIconTap: () async {
+                          // ✅ Handle date picker
+                          DateTime? selectedDate = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(1900),
+                            lastDate: DateTime.now(),
+                          );
+                          if (selectedDate != null) {
+                            setState(() {
+                              _bdayController.text =
+                                  '${selectedDate.toLocal()}'.split(' ')[0];
+                            });
+                          }
                         },
                       ),
-                    ),
-                    if (_genderError != null)
-                      Text(
-                        _genderError!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      if (_bdayError != null)
+                        Text(
+                          _bdayError!,
+                          style:
+                              const TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                      const SizedBox(height: 25),
+                      Focus(
+                        onFocusChange: (hasFocus) {
+                          setState(() {
+                            _isFocused = hasFocus;
+                          });
+                        },
+                        child: DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Gender',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.person),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: Colors.black
+                                    .withOpacity(_isFocused ? 1 : 0.5),
+                                width: 1.5,
+                                style: BorderStyle.solid,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: Colors.black
+                                    .withOpacity(_isFocused ? 1 : 0.5),
+                                width: 1.5,
+                                style: BorderStyle.solid,
+                              ),
+                            ),
+                          ),
+                          value: _genderController.text.isNotEmpty
+                              ? _genderController.text
+                              : null,
+                          items: ['Male', 'Female', 'Other']
+                              .map((gender) => DropdownMenuItem(
+                                    value: gender,
+                                    child: Text(gender),
+                                  ))
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _genderController.text = value!;
+                            });
+                          },
+                        ),
                       ),
-                    const SizedBox(height: 50),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 30.0),
-                      child: Align(
-                        alignment: Alignment.center,
-                        child: CustomButton(
-                          text: _isLoading ? 'Loading...' : 'Login',
-                          color: Theme.of(context).colorScheme.primary,
-                          textColor: Colors.white,
-                          onPressed: _isLoading
-                              ? () {}
-                              : () async {
-                                  setState(() {
-                                    _isSubmitted = true;
-                                    _validateForm();
-                                  });
-
-                                  if (_formKey.currentState!.validate() &&
-                                      _bdayError == null &&
-                                      _genderError == null &&
-                                      _nameError == null) {
+                      if (_genderError != null)
+                        Text(
+                          _genderError!,
+                          style:
+                              const TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                      const SizedBox(height: 50),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 30.0),
+                        child: Align(
+                          alignment: Alignment.center,
+                          child: CustomButton(
+                            text: _isLoading ? 'Loading...' : 'Login',
+                            color: Theme.of(context).colorScheme.primary,
+                            textColor: Colors.white,
+                            onPressed: _isLoading
+                                ? () {}
+                                : () async {
                                     setState(() {
-                                      _isLoading = true; // ✅ Start loading
+                                      _isSubmitted = true;
+                                      _validateForm();
                                     });
 
-                                    try {
-                                      await createProfile();
+                                    if (_formKey.currentState!.validate() &&
+                                        _bdayError == null &&
+                                        _genderError == null &&
+                                        _nameError == null) {
+                                      setState(() {
+                                        _isLoading = true; // ✅ Start loading
+                                      });
 
-                                      if (mounted) {
-                                        Navigator.of(context).pushReplacement(
-                                          MaterialPageRoute(
-                                              builder: (context) =>
-                                                  Mainscreen()),
-                                        );
-                                      }
-                                    } catch (e) {
-                                      String errorMessage = e.toString();
+                                      try {
+                                        await createProfile();
 
-                                      if (errorMessage.contains(
-                                          "User authentication failed")) {
-                                        errorMessage =
-                                            "Authentication error. Please re-login.";
-                                      } else if (errorMessage
-                                          .contains("Database error")) {
-                                        errorMessage =
-                                            "Server issue. Please try again later.";
-                                      } else if (errorMessage
-                                          .contains("SocketException")) {
-                                        errorMessage =
-                                            "No internet connection. Check your network.";
-                                      } else {
-                                        errorMessage =
-                                            "Registration failed. Please try again.";
-                                      }
+                                        if (mounted) {
+                                          Navigator.of(context).pop();
+                                          Navigator.of(context).pop();
+                                        }
+                                      } catch (e) {
+                                        String errorMessage = e.toString();
 
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(errorMessage,
-                                                style: TextStyle(
-                                                    color: Colors.white)),
-                                            backgroundColor: Colors.red,
-                                            duration: Duration(seconds: 3),
-                                          ),
-                                        );
-                                      }
-                                    } finally {
-                                      if (mounted) {
-                                        setState(() {
-                                          _isLoading = false; // ✅ Stop loading
-                                        });
+                                        if (errorMessage.contains(
+                                            "User authentication failed")) {
+                                          errorMessage =
+                                              "Authentication error. Please re-login.";
+                                        } else if (errorMessage
+                                            .contains("Database error")) {
+                                          errorMessage =
+                                              "Server issue. Please try again later.";
+                                        } else if (errorMessage
+                                            .contains("SocketException")) {
+                                          errorMessage =
+                                              "No internet connection. Check your network.";
+                                        } else {
+                                          errorMessage =
+                                              "Registration failed. Please try again.";
+                                        }
+
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(errorMessage,
+                                                  style: TextStyle(
+                                                      color: Colors.white)),
+                                              backgroundColor: Colors.red,
+                                              duration: Duration(seconds: 3),
+                                            ),
+                                          );
+                                        }
+                                      } finally {
+                                        if (mounted) {
+                                          setState(() {
+                                            _isLoading =
+                                                false; // ✅ Stop loading
+                                          });
+                                        }
                                       }
                                     }
-                                  }
-                                },
+                                  },
+                          ),
                         ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 20.0),
-                      child: Otheroptions(
-                        text1: 'Already have an account? ',
-                        text2: 'Login',
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (builder) => Loginmain(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.center,
-                      child: Container(
-                        height: 9,
-                        width: 180,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondary,
-                          borderRadius: BorderRadius.circular(5),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 20.0),
+                        child: Otheroptions(
+                          text1: 'Already have an account? ',
+                          text2: 'Login',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (builder) => Loginmain(),
+                              ),
+                            );
+                          },
                         ),
                       ),
-                    ),
-                  ],
+                      Align(
+                        alignment: Alignment.center,
+                        child: Container(
+                          height: 9,
+                          width: 180,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.secondary,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

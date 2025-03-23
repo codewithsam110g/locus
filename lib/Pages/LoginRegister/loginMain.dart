@@ -2,7 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:locus/Pages/Home/mainScreen.dart';
-import 'package:locus/Pages/LoginRegister/ForgetPassord/forgetPassword.dart';
+import 'package:locus/Pages/LoginRegister/register/register2.dart';
 import 'package:locus/Pages/LoginRegister/register/registerMain.dart';
 import 'package:locus/widgets/Buttons/newButton.dart';
 import 'package:locus/widgets/customContainer.dart';
@@ -16,7 +16,7 @@ class Loginmain extends StatefulWidget {
   State<Loginmain> createState() => _LoginmainState();
 }
 
-Future<AuthResponse> _googleSignIn() async {
+Future<AuthResponse> _googleSignIn(BuildContext context) async {
   const webClientId =
       '814624774577-2ancs6479g4r6g1e5hh94h6te0ks1sb0.apps.googleusercontent.com';
   const iosClientId = '';
@@ -43,13 +43,36 @@ Future<AuthResponse> _googleSignIn() async {
     }
 
     final supabase = Supabase.instance.client;
-    return await supabase.auth.signInWithIdToken(
+    final authResponse = await supabase.auth.signInWithIdToken(
       provider: OAuthProvider.google,
       idToken: idToken,
       accessToken: accessToken,
     );
+
+    // Check if user is new
+    final isNewUser = await _isNewUser(authResponse.user!.id);
+
+    await doStuff(); // Handle FCM token setup
+
+    if (isNewUser) {
+      // Navigate to onboarding page for new users
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (builder) => Register2(), // Create this page
+        ),
+      );
+    } else {
+      // Navigate to main screen for existing users
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (builder) => Mainscreen(),
+        ),
+      );
+    }
+
+    return authResponse;
   } on PlatformException catch (e) {
-    // Handle Google Sign-In errors specifically
+    // Handle Google Sign-In errors as before
     if (e.code == 'network_error') {
       throw 'Network error, please check your internet connection.';
     } else if (e.code == 'sign_in_canceled') {
@@ -63,6 +86,25 @@ Future<AuthResponse> _googleSignIn() async {
   } catch (e) {
     throw 'Sign-In Failed: $e';
   }
+}
+
+// Helper method to check if user is new by querying your profile table
+Future<bool> _isNewUser(String userId) async {
+  final supabase = Supabase.instance.client;
+
+  // Check if the user has a profile record
+  try {
+    final response = await supabase
+        .from('profile')
+        .select()
+        .eq('user_id', userId)
+        .maybeSingle();
+    return response == null;
+  } catch (e) {
+    print(e);
+    return false;
+  }
+  // If no profile record exists, they're a new user
 }
 
 Future<void> doStuff() async {
@@ -245,31 +287,7 @@ class _LoginmainState extends State<Loginmain> {
                         style: const TextStyle(color: Colors.red, fontSize: 12),
                       ),
                     SizedBox(
-                      height: 10,
-                    ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: () {
-                          print("onTap");
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (builder) => ForgetPassword(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          'Forgot Password?',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                            decoration: TextDecoration.underline,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 20,
+                      height: 30,
                     ),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 20.0),
@@ -305,7 +323,7 @@ class _LoginmainState extends State<Loginmain> {
                   ),
                   text: 'Continue with Google',
                   onTap: () {
-                    _googleSignIn();
+                    _googleSignIn(context);
                   },
                 ),
               ),

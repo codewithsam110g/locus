@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:locus/widgets/button.dart';
 import 'package:locus/widgets/inputfeilds.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Updatepassword extends StatefulWidget {
   @override
@@ -12,19 +13,50 @@ class _UpdatepasswordState extends State<Updatepassword> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
 
-  bool _isSubmitted = false;
-
   String? _passwordError;
   String? _newPasswordError;
 
-  void _validateAndShowDialog() {
-    if (_formKey.currentState!.validate()) {
+  final supabase = Supabase.instance.client;
+
+  void _validateAndShowDialog(String password) async {
+    try {
+      await supabase.auth.updateUser(UserAttributes(password: password));
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text("Password updated successfully"),
         backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(10),
+        duration: Duration(seconds: 3),
+      ));
+    } catch (error) {
+      // Handle different error types appropriately
+      String errorMessage = "Failed to update password. Please try again.";
+
+      if (error is AuthException) {
+        errorMessage = error.message;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(errorMessage),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(10),
+        duration: Duration(seconds: 4),
       ));
     }
+  }
+
+  void _validateForm() {
+    setState(() {
+      _passwordError =
+          _passwordController.text.isEmpty ? "New Password is required" : null;
+      _newPasswordError = _newPasswordController.text.isEmpty
+          ? "Confirm Password is required"
+          : (_newPasswordController.text != _passwordController.text)
+              ? "Above Passwords Don't Match"
+              : null;
+    });
   }
 
   @override
@@ -61,15 +93,13 @@ class _UpdatepasswordState extends State<Updatepassword> {
               ),
               Form(
                 key: _formKey,
-                autovalidateMode: _isSubmitted
-                    ? AutovalidateMode.always
-                    : AutovalidateMode.disabled,
+                autovalidateMode: AutovalidateMode.always,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 30),
                     Inputfields(
-                      title: 'Enter Current Password',
+                      title: 'Enter New Password',
                       emoji: const Icon(Icons.lock),
                       controller: _passwordController,
                       onTap: (value) {
@@ -87,7 +117,7 @@ class _UpdatepasswordState extends State<Updatepassword> {
                       ),
                     const SizedBox(height: 25),
                     Inputfields(
-                      title: 'Enter New Password',
+                      title: 'Enter Confirm Password',
                       emoji: const Icon(Icons.lock),
                       controller: _newPasswordController,
                       onTap: (value) {
@@ -113,15 +143,11 @@ class _UpdatepasswordState extends State<Updatepassword> {
                           colors: Theme.of(context).colorScheme.primary,
                           textColor: Colors.white,
                           onTap: () {
-                            setState(() {
-                              _isSubmitted = true;
-                              _validateForm();
-                            });
-                            if (_formKey.currentState!.validate() &&
-                                _passwordError == null &&
+                            _validateForm();
+                            if (_passwordError == null &&
                                 _newPasswordError == null) {
-                              _clearFields();
-                              _validateAndShowDialog(); // Show dialog on successful registration
+                              _validateAndShowDialog(_newPasswordController.text
+                                  .trim()); // Show dialog on successful registration
                             }
                           },
                         ),
@@ -135,16 +161,6 @@ class _UpdatepasswordState extends State<Updatepassword> {
         ),
       ),
     );
-  }
-
-  void _validateForm() {
-    setState(() {
-      _passwordError =
-          _passwordController.text.isEmpty ? "Password is required" : null;
-      _newPasswordError = _newPasswordController.text.isEmpty
-          ? "New Password is required"
-          : null;
-    });
   }
 
   void _clearFields() {

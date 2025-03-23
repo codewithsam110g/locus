@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // For formatting timestamps
+import 'package:intl/intl.dart';
 import 'package:locus/widgets/chat_bubble.dart';
 import 'package:locus/widgets/chat_bubble_user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -26,7 +26,7 @@ class _ChatinterfaceState extends State<Chatinterface> {
   final ScrollController _scrollController = ScrollController();
   final ScrollController _inputScrollController = ScrollController();
   bool isTyping = false;
-  List<Map<String, dynamic>> messages = []; // Combined messages list
+  List<Map<String, dynamic>> messages = [];
   String? userName;
   int chatId = -1;
   bool isLoading = true;
@@ -48,7 +48,6 @@ class _ChatinterfaceState extends State<Chatinterface> {
 
   @override
   void dispose() {
-    // Cancel the stream subscription when the widget is disposed
     _messagesSubscription?.cancel();
     _controller.dispose();
     _scrollController.dispose();
@@ -106,13 +105,11 @@ class _ChatinterfaceState extends State<Chatinterface> {
   void _subscribeToMessages() {
     if (chatId == -1) return;
 
-    // Use the stream method to listen for real-time updates
     _messagesSubscription = supabase
         .from('private_messages')
         .stream(primaryKey: ['id'])
         .eq('chat_id', chatId)
         .listen((data) {
-          // When new data arrives, refresh messages
           fetchMessages();
         });
   }
@@ -138,10 +135,8 @@ class _ChatinterfaceState extends State<Chatinterface> {
         List<Map<String, dynamic>> allMessages = [];
 
         for (var message in data) {
-          // Check if the current message is hidden for this user
           List<String> hiddenBy = List<String>.from(message['hidden_by'] ?? []);
 
-          // Skip this message if it's hidden for the current user
           if (hiddenBy.contains(currentUserId)) {
             continue;
           }
@@ -153,8 +148,7 @@ class _ChatinterfaceState extends State<Chatinterface> {
             "message": message['message'],
             "time": formattedTime,
             "isCurrentUser": isCurrentUser,
-            "timestamp":
-                message['created_at'], // Keep original timestamp for sorting
+            "timestamp": message['created_at'],
           });
         }
 
@@ -201,10 +195,8 @@ class _ChatinterfaceState extends State<Chatinterface> {
         "created_at": timestamp,
       });
 
-      // Clear the text field
       _controller.clear();
       _inputScrollController.jumpTo(0);
-      // No need to manually update messages as the stream will trigger fetchMessages()
     } catch (error) {
       print("Error sending message: $error");
     } finally {
@@ -216,7 +208,7 @@ class _ChatinterfaceState extends State<Chatinterface> {
 
   String formatTimestamp(String timestamp) {
     final dateTime = DateTime.parse(timestamp).toLocal();
-    return DateFormat('hh:mm a').format(dateTime); // Format to 12-hour time
+    return DateFormat('hh:mm a').format(dateTime);
   }
 
   String getMessageDate(DateTime dateTime) {
@@ -230,10 +222,9 @@ class _ChatinterfaceState extends State<Chatinterface> {
     } else if (messageDate == yesterday) {
       return "Yesterday";
     } else if (messageDate.isAfter(today.subtract(const Duration(days: 6)))) {
-      return DateFormat('EEEE').format(dateTime); // Example: "Monday"
+      return DateFormat('EEEE').format(dateTime);
     } else {
-      return DateFormat('dd MMM yyyy')
-          .format(dateTime); // Example: "01 Mar 2025"
+      return DateFormat('dd MMM yyyy').format(dateTime);
     }
   }
 
@@ -246,24 +237,46 @@ class _ChatinterfaceState extends State<Chatinterface> {
           .eq("chat_id", chatId);
 
       for (var message in allMessages) {
-        // Ensure 'hidden_by' is a List<String>
         List<String> hiddenBy = List<String>.from(message['hidden_by'] ?? []);
 
-        // Only update if the user ID isn't already in the list
         if (!hiddenBy.contains(userId)) {
           hiddenBy.add(userId);
 
-          // Update this specific message in the database
           await supabase
               .from("private_messages")
               .update({'hidden_by': hiddenBy}).eq('id', message['id']);
         }
       }
 
-      // After updating the database, refresh messages
       await fetchMessages();
     } catch (error) {
       print("Error clearing chat: $error");
+    }
+  }
+
+  void _handleDecline() async {
+    try {
+      await supabase.from("private_messages").delete().eq("chat_id", chatId);
+
+      await supabase.from("chats").delete().eq("id", chatId);
+
+      final uid = supabase.auth.currentUser!.id;
+
+      await supabase
+          .from('requests')
+          .delete()
+          .or('reciever_uid.eq.$uid,requested_uid.eq.${widget.id}');
+
+      await supabase
+          .from('requests')
+          .delete()
+          .or('reciever_uid.eq.${widget.id},requested_uid.eq.$uid');
+
+      Navigator.of(context).pop();
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to decline: $error")),
+      );
     }
   }
 
@@ -327,8 +340,7 @@ class _ChatinterfaceState extends State<Chatinterface> {
             ),
             TextButton(
               onPressed: () {
-                // Implement decline chat logic here
-                print("Chat declined");
+                _handleDecline();
                 Navigator.pop(context);
               },
               child: Text(
@@ -352,7 +364,7 @@ class _ChatinterfaceState extends State<Chatinterface> {
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.primary,
           automaticallyImplyLeading: false,
-          titleSpacing: 0, // Remove default spacing
+          titleSpacing: 0,
           leading: IconButton(
             onPressed: () {
               Navigator.of(context).pop();
@@ -403,8 +415,7 @@ class _ChatinterfaceState extends State<Chatinterface> {
                     context: context,
                     position: RelativeRect.fromLTRB(
                       position.dx,
-                      position.dy +
-                          button.size.height, // Show directly below the button
+                      position.dy + button.size.height,
                       position.dx + button.size.width,
                       position.dy + button.size.height + 50,
                     ),
@@ -436,11 +447,10 @@ class _ChatinterfaceState extends State<Chatinterface> {
                         ),
                       ),
                     ],
-                    color: Colors.white, // Background color
+                    color: Colors.white,
                     elevation: 10,
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(10), // Smooth rounded corners
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ).then((value) {
                     if (value == 'clear_chat') {
@@ -484,28 +494,27 @@ class _ChatinterfaceState extends State<Chatinterface> {
                             children: [
                               if (showDateHeader)
                                 Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 10.0),
-                                      child: Center(
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, 
-                                            vertical: 5
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[300],
-                                            borderRadius: BorderRadius.circular(16),
-                                          ),
-                                          child: Text(
-                                            formattedDate,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[700],
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10.0),
+                                  child: Center(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Text(
+                                        formattedDate,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[700],
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ),
+                                  ),
+                                ),
                               message['isCurrentUser']
                                   ? ChatBubble(
                                       message: message['message'],
@@ -525,7 +534,6 @@ class _ChatinterfaceState extends State<Chatinterface> {
               padding: const EdgeInsets.only(left: 10, right: 10, bottom: 8),
               child: Row(
                 children: [
-                  // And update your TextField code
                   Expanded(
                     child: Theme(
                       data: Theme.of(context).copyWith(

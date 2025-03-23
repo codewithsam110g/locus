@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:locus/Utils/cloudinary.dart';
 import 'package:locus/widgets/Buttons/newButton.dart';
-import 'package:locus/widgets/button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// A custom input formatter to auto-insert dashes for the birthday field.
@@ -100,16 +99,26 @@ class _EditprofileState extends State<Editprofile> {
     final supabase = Supabase.instance.client;
     final userId = supabase.auth.currentUser!.id;
     final url = await uploadFile(_selectedImage);
-    Map<String, dynamic> updates = {
-      'name': _nameController.text,
-      'dob': _birthdayController.text,
-      "image_link": url,
-    };
-
-    await supabase.from('profile').update(updates).eq('user_id', userId);
-    setState(() {
-      isSend = false;
-    });
+    if (url == "NAN") {
+      Map<String, dynamic> updates = {
+        'name': _nameController.text,
+        'dob': _birthdayController.text,
+      };
+      await supabase.from('profile').update(updates).eq('user_id', userId);
+      setState(() {
+        isSend = false;
+      });
+    } else {
+      Map<String, dynamic> updates = {
+        'name': _nameController.text,
+        'dob': _birthdayController.text,
+        "image_link": url,
+      };
+      await supabase.from('profile').update(updates).eq('user_id', userId);
+      setState(() {
+        isSend = false;
+      });
+    }
     Navigator.of(ctx).pop();
   }
 
@@ -123,11 +132,9 @@ class _EditprofileState extends State<Editprofile> {
         _selectedImage = image;
         _selectedImageData = data!;
       });
-      // Optionally, upload the image to Supabase Storage and update the profile.
     }
   }
 
-  /// Builds the circular avatar with pencil icon.
   Widget _buildAvatar() {
     return Stack(
       children: [

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:locus/Pages/Home/Home/about.dart';
 import 'dart:math';
 import 'package:locus/Pages/Home/Settings/editProfile.dart';
@@ -21,12 +22,27 @@ class _ProfileState extends State<Profile> {
   Color? avatarColor;
   String appVersion = "";
   String? dob;
+  bool isEmailUser = true;
 
   @override
   void initState() {
     super.initState();
     doStuff();
     fetchAppVersion();
+  }
+
+  void _handleSignOut() async {
+    const webClientId =
+        '814624774577-2ancs6479g4r6g1e5hh94h6te0ks1sb0.apps.googleusercontent.com';
+    const iosClientId = '';
+
+    final GoogleSignIn googleSignIn = GoogleSignIn(
+      clientId: iosClientId,
+      serverClientId: webClientId,
+    );
+    final supabase = Supabase.instance.client;
+    await googleSignIn.signOut();
+    await supabase.auth.signOut();
   }
 
   Future<void> doStuff() async {
@@ -52,6 +68,8 @@ class _ProfileState extends State<Profile> {
       photoURL = prof?["image_link"] as String?;
       dob = dob;
       avatarColor = getRandomColor();
+      isEmailUser =
+          supabase.auth.currentUser!.appMetadata['provider'] == "email";
     });
   }
 
@@ -126,124 +144,145 @@ class _ProfileState extends State<Profile> {
         ),
         automaticallyImplyLeading: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.only(left: 25, right: 20, top: 30, bottom: 5),
-        child: Column(
-          children: [
-            CircleAvatar(
-              backgroundColor:
-                  photoURL == null ? (avatarColor ?? Colors.grey) : null,
-              backgroundImage:
-                  photoURL != null ? NetworkImage(photoURL!) : null,
-              radius: 50,
-              child: photoURL == null
-                  ? Text(
-                      (name != null && name!.isNotEmpty)
-                          ? name![0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding:
+              const EdgeInsets.only(left: 25, right: 20, top: 30, bottom: 5),
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: BouncingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: photoURL == null
+                            ? (avatarColor ?? Colors.grey)
+                            : null,
+                        backgroundImage:
+                            photoURL != null ? NetworkImage(photoURL!) : null,
+                        radius: 50,
+                        child: photoURL == null
+                            ? Text(
+                                (name != null && name!.isNotEmpty)
+                                    ? name![0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : null,
                       ),
-                    )
-                  : null,
-            ),
-            SizedBox(height: 15),
-            Text(
-              name ?? "Loading...",
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-            Text(
-              email ?? "Loading...",
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w400,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 15),
-            // Middle Section - Buttons
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: screenSize.height * 0.04),
-              child: OrientationBuilder(
-                builder: (context, orientation) {
-                  return orientation == Orientation.portrait ||
-                          screenSize.width < 600
-                      ? Column(
-                          children: [
-                            _buildEditProfileButton(context, isSmallScreen),
-                            SizedBox(height: screenSize.height * 0.02),
-                            _buildUpdatePasswordButton(context, isSmallScreen),
-                          ],
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            Expanded(
-                                child: _buildEditProfileButton(
-                                    context, isSmallScreen)),
-                            const SizedBox(width: 16),
-                            Expanded(
-                                child: _buildUpdatePasswordButton(
-                                    context, isSmallScreen)),
-                          ],
-                        );
-                },
-              ),
-            ),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => About(),
+                      SizedBox(height: 15),
+                      Text(
+                        name ?? "Loading...",
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
                       ),
-                    );
-                  },
-                  child: const Text(
-                    "About",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                      decoration: TextDecoration.underline,
-                      decorationColor: Colors.grey,
-                    ),
+                      Text(
+                        email ?? "Loading...",
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      // Middle Section - Buttons
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                            vertical: screenSize.height * 0.04),
+                        child: OrientationBuilder(
+                          builder: (context, orientation) {
+                            return orientation == Orientation.portrait ||
+                                    screenSize.width < 600
+                                ? Column(
+                                    children: [
+                                      _buildEditProfileButton(
+                                          context, isSmallScreen),
+                                      SizedBox(
+                                          height: screenSize.height * 0.02),
+                                      _buildUpdatePasswordButton(
+                                          context, isSmallScreen),
+                                    ],
+                                  )
+                                : Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      Expanded(
+                                          child: _buildEditProfileButton(
+                                              context, isSmallScreen)),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                          child: _buildUpdatePasswordButton(
+                                              context, isSmallScreen)),
+                                    ],
+                                  );
+                          },
+                        ),
+                      ),
+                      // Add a SizedBox with minimum height to ensure content is scrollable
+                      // and to create space for the footer
+                      SizedBox(height: screenSize.height * 0.2),
+                    ],
                   ),
                 ),
-                Text(
-                  "Version $appVersion",
-                  style: const TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    await Supabase.instance.client.auth.signOut();
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (builder) => Loginmain(),
+              ),
+              // Footer section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => About(),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      "About",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Colors.grey,
                       ),
-                    );
-                  },
-                  child: const Text(
-                    "Sign Out",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                      decoration: TextDecoration.underline,
-                      decorationColor: Colors.grey,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  Text(
+                    "Version $appVersion",
+                    style: const TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      _handleSignOut();
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (builder) => Loginmain(),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      "Sign Out",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Colors.grey,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -302,7 +341,13 @@ class _ProfileState extends State<Profile> {
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: () {
-          _showBottomSheet();
+          if (!isEmailUser) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(
+                    "You are a Non Email User So Please Check with your Auth Provider")));
+          } else {
+            _showBottomSheet();
+          }
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Theme.of(context).colorScheme.primary,

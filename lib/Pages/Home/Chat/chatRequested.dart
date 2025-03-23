@@ -179,13 +179,27 @@ class _ChatforrequestedState extends State<Chatforrequested> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Outerbutton(
-                  text: 'Reject',
-                  hPadding: 30,
+                GestureDetector(
+                  onTap: () async {
+                    final uid = supabase.auth.currentUser!.id;
+
+                    await supabase.from('requests').delete().or(
+                        'reciever_uid.eq.$uid,requested_uid.eq.${widget.id}');
+
+                    await supabase.from('requests').delete().or(
+                        'reciever_uid.eq.${widget.id},requested_uid.eq.$uid');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Rejected the $userName's Request"))
+                    );
+                  },
+                  child: Outerbutton(
+                    text: 'Reject',
+                    hPadding: 30,
+                  ),
                 ),
                 Innerbutton(
-                  function:isAccept ? (){} : _acceptChatRequest,
-                  text:isAccept ? "Accepting.." : 'Accept',
+                  function: isAccept ? () {} : _acceptChatRequest,
+                  text: isAccept ? "Accepting" : 'Accept',
                   hPadding: 30,
                 ),
               ],

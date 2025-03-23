@@ -45,45 +45,42 @@ class _MainscreenState extends State<Mainscreen> {
 
     FirebaseMessaging.onMessage.listen((payload) {
       final notif = payload.notification;
+      
       if (notif != null) {
         // Check if the notification tag contains "Community"
-        if (payload.data['tag'] != null &&
-            payload.data['tag'] as String == "community") {
+        // // Show a local notification even if the app is open
+        final flutterLocalNotificationsPlugin =
+            FlutterLocalNotificationsPlugin();
 
+        // Define notification details
+        const androidPlatformChannelSpecifics = AndroidNotificationDetails(
+          'community_channel_id',
+          'Community Notifications',
+          channelDescription: 'Notifications for community messages',
+          importance: Importance.high,
+          priority: Priority.high,
+          showWhen: true,
+        );
 
-          // Show a local notification even if the app is open
-          final flutterLocalNotificationsPlugin =
-              FlutterLocalNotificationsPlugin();
+        const iOSPlatformChannelSpecifics = DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        );
 
-          // Define notification details
-          const androidPlatformChannelSpecifics = AndroidNotificationDetails(
-            'community_channel_id',
-            'Community Notifications',
-            channelDescription: 'Notifications for community messages',
-            importance: Importance.high,
-            priority: Priority.high,
-            showWhen: true,
-          );
+        const platformChannelSpecifics = NotificationDetails(
+          android: androidPlatformChannelSpecifics,
+          iOS: iOSPlatformChannelSpecifics,
+        );
 
-          const iOSPlatformChannelSpecifics = DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          );
-
-          const platformChannelSpecifics = NotificationDetails(
-            android: androidPlatformChannelSpecifics,
-            iOS: iOSPlatformChannelSpecifics,
-          );
-
-          // Show the notification
-          flutterLocalNotificationsPlugin.show(
-            DateTime.now().millisecond, // Random ID based on current time
-            notif.title,
-            notif.body,
-            platformChannelSpecifics,
-          );
-        } else {
+        // Show the notification
+        flutterLocalNotificationsPlugin.show(
+          DateTime.now().millisecond, // Random ID based on current time
+          notif.title,
+          notif.body,
+          platformChannelSpecifics,
+        );
+        if (payload.data['tag'] == null) {
           setState(() {
             unseenCount++;
           });
