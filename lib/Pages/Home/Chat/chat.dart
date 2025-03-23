@@ -34,7 +34,6 @@ class _ChatState extends State<Chat> {
     _listenForUpdates();
     _listenForLocationUpdates();
   }
-  
 
   /// Retrieves the current user's location settings from their profile.
   Future<void> _setLocation() async {
@@ -120,8 +119,9 @@ class _ChatState extends State<Chat> {
             .select("image_link")
             .eq("user_id", otherId)
             .single();
-            
-        String photoURL = resp['image_link'] != null ? resp['image_link'] as String : '';
+
+        String photoURL =
+            resp['image_link'] != null ? resp['image_link'] as String : '';
 
         // Determine the request status
         String requestStatus = "";
@@ -189,28 +189,89 @@ class _ChatState extends State<Chat> {
   }
 
   void _showRequest(BuildContext context, String recipientUserId) {
+    bool _isLoading = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        content: const Text(
-            'You need to send a request to start a conversation with this user. Would you like to proceed?'),
-        actions: [
-          Row(
-            children: [
-              const Outerbutton(text: 'Cancel'),
-              const SizedBox(width: 10),
-              Innerbutton(
-                function: () async {
-                  Navigator.of(context).pop();
-                  await _sendChatRequest(recipientUserId);
-                },
-                text: 'Request',
-              )
-            ],
-          )
-        ],
-      ),
+      barrierDismissible: false, // Prevent dismissing by tapping outside
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                'Send Chat Request',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              backgroundColor: Colors.white,
+              content: _isLoading
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                          const SizedBox(height: 24),
+                          const Text(
+                            'Sending chat request...',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const Text(
+                      'You need to send a request to start a conversation with this user. Would you like to proceed?',
+                      style: TextStyle(fontSize: 16),
+                    ),
+              actionsPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              actions: _isLoading
+                  ? [] // No actions while loading
+                  : [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Outerbutton(text: 'Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Innerbutton(
+                              function: () async {
+                                // Update dialog state to show loading
+                                setDialogState(() {
+                                  _isLoading = true;
+                                });
+
+                                // Send chat request
+                                await _sendChatRequest(recipientUserId);
+
+                                // Close dialog after operation is complete
+                                if (mounted) {
+                                  Navigator.pop(context);
+                                }
+                                _fetchMessages();
+                              },
+                              text: 'Request',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -251,12 +312,10 @@ class _ChatState extends State<Chat> {
         style: const TextStyle(color: Colors.white),
       ),
     );
-  } 
-  
+  }
+
   Widget buildAvatarWithNetworkImage(String url) {
-    return CircleAvatar(
-      backgroundImage: NetworkImage(url)
-    );
+    return CircleAvatar(backgroundImage: NetworkImage(url));
   }
 
   @override
@@ -269,7 +328,7 @@ class _ChatState extends State<Chat> {
         title: const Padding(
           padding: EdgeInsets.only(left: 20.0),
           child: Text(
-            'Message',
+            'Infos',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w500,
@@ -337,7 +396,8 @@ class _ChatState extends State<Chat> {
                       : chats.isEmpty
                           ? const Center(
                               child: Text(
-                                  'No messages nearby. Try adjusting your range.'),
+                                'No messages nearby. Try adjusting your range.',
+                              ),
                             )
                           : RefreshIndicator(
                               onRefresh: () async {
@@ -353,17 +413,22 @@ class _ChatState extends State<Chat> {
                                       chat['image_link'] != "";
                                   return Chatcontainer(
                                     type: chat['type'] as String,
-                                    avatar: useImage ? buildAvatarWithNetworkImage(chat['image_link']): buildAvatar(chat['name'] as String),
+                                    avatar: useImage
+                                        ? buildAvatarWithNetworkImage(
+                                            chat['image_link'])
+                                        : buildAvatar(chat['name'] as String),
                                     name: chat['name'] as String,
                                     text: chat['text'] as String,
-                                    date: chat["created_at"] as String,
+                                    timestamp: chat["created_at"],
                                     function: () {
                                       if (chat['isActive'] == "pending") {
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
                                           const SnackBar(
-                                              content: Text(
-                                                  "You have a pending Request with the user!")),
+                                            content: Text(
+                                              "You have a pending Request with the user!",
+                                            ),
+                                          ),
                                         );
                                       } else if (!isAccept) {
                                         _showRequest(context, chat['uid']);
@@ -372,8 +437,13 @@ class _ChatState extends State<Chat> {
                                           MaterialPageRoute(
                                             builder: (builder) => Chatinterface(
                                               id: chat['uid'] as String,
-                                              avatar: buildAvatar(
-                                                  chat['name'] as String),
+                                              avatar: useImage
+                                                  ? buildAvatarWithNetworkImage(
+                                                      chat['image_link'])
+                                                  : buildAvatar(
+                                                      chat['name'] as String,
+                                                    ),
+                                              userName: chat['name'] as String,
                                             ),
                                           ),
                                         );

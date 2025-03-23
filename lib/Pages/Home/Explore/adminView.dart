@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:locus/widgets/chat_bubble.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 class Adminview extends StatefulWidget {
   const Adminview({super.key});
@@ -77,8 +78,37 @@ class _AdminviewState extends State<Adminview> {
 
   String formatDateTime(String timestamp) {
     DateTime dateTime = DateTime.parse(timestamp).toLocal();
-    return "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')} "
-        "${dateTime.day.toString().padLeft(2, '0')}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.year}";
+    int hour = dateTime.hour;
+    String period = hour >= 12 ? "PM" : "AM";
+
+    // Convert to 12-hour format
+    hour = hour > 12 ? hour - 12 : hour;
+    hour = hour == 0 ? 12 : hour; // Handle midnight (0:00) as 12 AM
+
+    return "${hour.toString()}:${dateTime.minute.toString().padLeft(2, '0')} $period";
+  }
+
+  String getDateHeader(String timestamp) {
+    DateTime messageDate = DateTime.parse(timestamp).toLocal();
+    DateTime now = DateTime.now();
+    DateTime today = DateTime(now.year, now.month, now.day);
+    DateTime yesterday = today.subtract(const Duration(days: 1));
+    DateTime messageDay =
+        DateTime(messageDate.year, messageDate.month, messageDate.day);
+
+    if (messageDay == today) {
+      return "Today";
+    } else if (messageDay == yesterday) {
+      return "Yesterday";
+    } else if (now.difference(messageDate).inDays < 7) {
+      // Within the last week
+      return DateFormat('EEEE')
+          .format(messageDate); // Day name (e.g., "Monday")
+    } else {
+      // More than a week ago
+      return DateFormat('MMM d, yyyy')
+          .format(messageDate); // e.g., "Mar 23, 2025"
+    }
   }
 
   void _scrollToBottom() {
@@ -140,9 +170,49 @@ class _AdminviewState extends State<Adminview> {
                         itemCount: messages.length,
                         itemBuilder: (context, index) {
                           final message = messages[index];
-                          return ChatBubble(
-                            message: message["message"],
-                            time: formatDateTime(message["created_at"]),
+
+                          bool showDateHeader = false;
+                          String dateHeader =
+                              getDateHeader(message["created_at"]);
+                          if (index == 0) {
+                            showDateHeader = true;
+                          } else {
+                            String prevDateHeader = getDateHeader(
+                                messages[index - 1]["created_at"]);
+                            showDateHeader = dateHeader != prevDateHeader;
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (showDateHeader)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10.0),
+                                  child: Center(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Text(
+                                        dateHeader,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[700],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ChatBubble(
+                                message: message["message"],
+                                time: formatDateTime(message["created_at"]),
+                              ),
+                            ],
                           );
                         },
                       ),

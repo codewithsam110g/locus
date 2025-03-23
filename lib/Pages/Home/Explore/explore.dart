@@ -193,7 +193,8 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                 'name': item['title'],
                 'description': item['desc'],
                 'tag': item['tags'],
-                'img': item['logo_link'] ?? 'assets/img/clubs.jpg', // or use an image from the record if available
+                'img': item['logo_link'] ??
+                    'assets/img/clubs.jpg', // or use an image from the record if available
                 'com_id': item['com_id']
               })
           .toList();
@@ -245,6 +246,8 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final filteredList = getFilteredExploreList();
+    final bool noClubsAvailable = filteredList.isEmpty;
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();
@@ -323,8 +326,9 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                               onTap: (isAdmin && isAccepted)
                                   ? () => Navigator.of(context).push(
                                         MaterialPageRoute(
-                                            builder: (builder) =>
-                                                const Adminview()),
+                                          builder: (builder) =>
+                                              const Adminview(),
+                                        ),
                                       )
                                   : null,
                               child: Container(
@@ -363,25 +367,64 @@ class _ExploreState extends State<Explore> with SingleTickerProviderStateMixin {
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.only(top: 8.0),
-                            child: ListView.builder(
-                              itemCount: getFilteredExploreList().length,
-                              itemBuilder: (context, index) {
-                                final list = getFilteredExploreList()[index];
-                                return GestureDetector(
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                        MaterialPageRoute(builder: (context) {
-                                      return Userview(id: list['com_id'],name: list['name'],);
-                                    }));
-                                  },
-                                  child: Explorecontainer(
-                                    name: list['name'],
-                                    description: list['description'],
-                                    img: list['img'],
+                            child: noClubsAvailable
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.group_off,
+                                          size: 64,
+                                          color: Colors.grey[400],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No clubs nearby',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Try adjusting your range.',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[500],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    itemCount: getFilteredExploreList().length,
+                                    itemBuilder: (context, index) {
+                                      final list =
+                                          getFilteredExploreList()[index];
+                                      return GestureDetector(
+                                        onTap: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) {
+                                                return Userview(
+                                                  id: list['com_id'],
+                                                  name: list['name'],
+                                                  profilePicUrl: list['img'],
+                                                );
+                                              },
+                                            ),
+                                          );
+                                        },
+                                        child: Explorecontainer(
+                                          name: list['name'],
+                                          description: list['description'],
+                                          img: list['img'],
+                                        ),
+                                      );
+                                    },
                                   ),
-                                );
-                              },
-                            ),
                           ),
                         ),
                       ],
@@ -429,4 +472,4 @@ class CircleClipper extends CustomClipper<Rect> {
   bool shouldReclip(CircleClipper oldClipper) {
     return oldClipper.radius != radius;
   }
-}        
+}

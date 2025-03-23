@@ -49,11 +49,7 @@ class _MainscreenState extends State<Mainscreen> {
         // Check if the notification tag contains "Community"
         if (payload.data['tag'] != null &&
             payload.data['tag'] as String == "community") {
-          //print(payload.data['id']);
-          
-          //TODO: Implement onMessageTap from FCM and open Chats for Generic,
-          // Particular User for Private Message,
-          // Community for Community Message
+
 
           // Show a local notification even if the app is open
           final flutterLocalNotificationsPlugin =
@@ -133,7 +129,7 @@ class _MainscreenState extends State<Mainscreen> {
                 children: [
                   _buildNavItem(Icons.explore, 'Explore', 0),
                   _buildNavItem(Icons.home, 'Home', 1),
-                  _buildNavItem(Icons.forum, 'Chat', 2, unseenCount),
+                  _buildNavItem(Icons.forum, 'Infos', 2, unseenCount),
                 ],
               ),
             ),

@@ -7,6 +7,7 @@ class Primarywidget extends StatefulWidget {
   final String time;
   final bool chat;
   final VoidCallback function;
+  
   const Primarywidget({
     super.key,
     required this.img,
@@ -22,6 +23,20 @@ class Primarywidget extends StatefulWidget {
 }
 
 class _PrimarywidgetState extends State<Primarywidget> {
+  // Generate color based on name
+  Color getColorFromName(String name) {
+    if (name.isEmpty) return Colors.grey;
+    
+    // Use the ASCII value of the first character to generate a color
+    final int asciiValue = name.codeUnitAt(0);
+    return Color.fromARGB(
+      255,
+      (asciiValue * 13) % 255,
+      (asciiValue * 7) % 255,
+      (asciiValue * 11) % 255,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -43,9 +58,25 @@ class _PrimarywidgetState extends State<Primarywidget> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(50),
                       ),
-                      child: widget.img.contains("asset")
-                          ? Image.asset(widget.img)
-                          : Image.network(widget.img),
+                      child: widget.img.isNotEmpty
+                          ? (widget.img.contains("asset")
+                              ? Image.asset(widget.img)
+                              : Image.network(widget.img))
+                          : Container(
+                              color: getColorFromName(widget.name),
+                              child: Center(
+                                child: Text(
+                                  widget.name.isNotEmpty
+                                      ? widget.name[0].toUpperCase()
+                                      : "?",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
                     ),
                   ),
                 ),
@@ -82,7 +113,7 @@ class _PrimarywidgetState extends State<Primarywidget> {
                     ),
                     Text(
                       widget.time,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
                         color: Color.fromRGBO(70, 70, 70, 1),

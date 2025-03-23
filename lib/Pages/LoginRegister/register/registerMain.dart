@@ -226,7 +226,8 @@ class _RegistermainState extends State<Registermain> {
                                     );
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
-                                          builder: (context) => Register2()),
+                                        builder: (context) => Register2(),
+                                      ),
                                     );
                                   } catch (e) {
                                     print(e);
@@ -298,7 +299,9 @@ class _RegistermainState extends State<Registermain> {
                     padding: const EdgeInsets.symmetric(horizontal: 5.0),
                     child: Text('Or'),
                   ),
-                  Expanded(child: Divider()),
+                  Expanded(
+                    child: Divider(),
+                  ),
                 ],
               ),
               SizedBox(height: 25),

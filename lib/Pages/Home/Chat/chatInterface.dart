@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For formatting timestamps
-import 'package:locus/widgets/chat_bubble_user.dart';
 import 'package:locus/widgets/chat_bubble.dart';
+import 'package:locus/widgets/chat_bubble_user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Chatinterface extends StatefulWidget {
@@ -33,6 +33,7 @@ class _ChatinterfaceState extends State<Chatinterface> {
   final supabase = Supabase.instance.client;
   StreamSubscription? _messagesSubscription;
   bool isFetchMessages = false;
+  bool isSend = false;
 
   @override
   void initState() {
@@ -179,6 +180,9 @@ class _ChatinterfaceState extends State<Chatinterface> {
 
   Future<void> sendMessage() async {
     if (_controller.text.isEmpty || chatId == -1) return;
+    setState(() {
+      isSend = true;
+    });
 
     final currentUserId = supabase.auth.currentUser?.id;
     if (currentUserId == null) {
@@ -203,6 +207,10 @@ class _ChatinterfaceState extends State<Chatinterface> {
       // No need to manually update messages as the stream will trigger fetchMessages()
     } catch (error) {
       print("Error sending message: $error");
+    } finally {
+      setState(() {
+        isSend = false;
+      });
     }
   }
 
@@ -344,17 +352,18 @@ class _ChatinterfaceState extends State<Chatinterface> {
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.primary,
           automaticallyImplyLeading: false,
+          titleSpacing: 0, // Remove default spacing
+          leading: IconButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            icon: const Icon(
+              Icons.arrow_back_ios,
+              color: Colors.white,
+            ),
+          ),
           title: Row(
             children: [
-              IconButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                icon: Icon(
-                  Icons.arrow_back_ios,
-                  color: Colors.white,
-                ),
-              ),
               ClipOval(
                 child: SizedBox(
                   width: 40,
@@ -363,12 +372,16 @@ class _ChatinterfaceState extends State<Chatinterface> {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                widget.userName ?? "Unknown User",
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: Colors.white,
-                  fontFamily: 'Electrolize',
+              Expanded(
+                child: Text(
+                  widget.userName ?? "Unknown User",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    color: Colors.white,
+                    fontFamily: 'Electrolize',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ],
@@ -402,8 +415,10 @@ class _ChatinterfaceState extends State<Chatinterface> {
                           children: const [
                             Icon(Icons.delete, color: Colors.black),
                             SizedBox(width: 10),
-                            Text("Clear Chat",
-                                style: TextStyle(color: Colors.black)),
+                            Text(
+                              "Clear Chat",
+                              style: TextStyle(color: Colors.black),
+                            ),
                           ],
                         ),
                       ),
@@ -413,8 +428,10 @@ class _ChatinterfaceState extends State<Chatinterface> {
                           children: const [
                             Icon(Icons.block, color: Colors.black),
                             SizedBox(width: 10),
-                            Text("Decline",
-                                style: TextStyle(color: Colors.black)),
+                            Text(
+                              "Decline",
+                              style: TextStyle(color: Colors.black),
+                            ),
                           ],
                         ),
                       ),
@@ -467,29 +484,28 @@ class _ChatinterfaceState extends State<Chatinterface> {
                             children: [
                               if (showDateHeader)
                                 Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 8.0),
-                                  child: Center(
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 5, horizontal: 10),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .secondary,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        formattedDate,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black54,
+                                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                                      child: Center(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, 
+                                            vertical: 5
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[300],
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          child: Text(
+                                            formattedDate,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[700],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ),
                               message['isCurrentUser']
                                   ? ChatBubble(
                                       message: message['message'],
@@ -552,13 +568,15 @@ class _ChatinterfaceState extends State<Chatinterface> {
                   const SizedBox(width: 10),
                   Container(
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
+                      color: isSend
+                          ? Theme.of(context).colorScheme.secondary
+                          : Theme.of(context).colorScheme.primary,
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
                       icon:
-                          const Icon(Icons.send, size: 28, color: Colors.white),
-                      onPressed: sendMessage,
+                          const Icon(Icons.send, size: 25, color: Colors.white),
+                      onPressed: isSend ? null : sendMessage,
                       padding: const EdgeInsets.all(12),
                       constraints: const BoxConstraints(),
                     ),
