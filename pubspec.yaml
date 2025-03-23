@@ -83,7 +83,9 @@ flutter:
   fonts:
      - family: Electrolize
        fonts:
-         - asset: assets/fonts/electrolize-regular.ttf
+         - asset: assets/fonts/Roboto-Light.ttf
+         - asset: assets/fonts/Roboto-Regular.ttf
+      
 
 flutter_icons:
   android: true

@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 
 class Outerbutton extends StatelessWidget {
   final String text;
+  final double vPadding ;
+  final double hPadding;
 
   const Outerbutton({
     super.key,
     required this.text,
+    this.hPadding = 3,
+    this.vPadding = 5,
   });
 
   @override
@@ -30,7 +34,7 @@ class Outerbutton extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
+        padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: vPadding),
         child: Text(
           text,
           style: TextStyle(

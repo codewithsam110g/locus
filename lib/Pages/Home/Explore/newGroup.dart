@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:locus/widgets/button.dart';
+import 'package:locus/widgets/Buttons/InnerButton.dart';
+import 'package:locus/widgets/Buttons/OuterButton.dart';
+import 'package:locus/widgets/Buttons/newButton.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import "package:locus/Utils/cloudinary.dart";
@@ -117,7 +119,10 @@ class _NewgroupState extends State<Newgroup> {
         return; // Stop execution if location is not available
       }
 
-      final locationData = {"lat": position.latitude, "long": position.longitude};
+      final locationData = {
+        "lat": position.latitude,
+        "long": position.longitude
+      };
 
       await supabase.from("community").insert({
         "com_id": com_id,
@@ -131,8 +136,7 @@ class _NewgroupState extends State<Newgroup> {
       await supabase
           .from("profile")
           .update({"com_id": com_id}).eq("user_id", userId);
-      
-      
+
       Fluttertoast.showToast(msg: "Group request submitted successfully!");
     } catch (e) {
       Fluttertoast.showToast(msg: "Error: ${e.toString()}");
@@ -145,61 +149,97 @@ class _NewgroupState extends State<Newgroup> {
 
   // Function to show a dialog box with loading indicator
   void _showConfirmationDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // Prevent dismissing by tapping outside
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Confirmation'),
-              content: _isLoading
-                  ? Column(
+  bool _isLoading = false;
+  
+  showDialog(
+    context: context,
+    barrierDismissible: false, // Prevent dismissing by tapping outside
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text(
+              'Confirmation',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            backgroundColor: Colors.white,
+            content: _isLoading
+                ? Container(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('Creating your group...'),
+                        CircularProgressIndicator(
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Creating your group...',
+                          style: TextStyle(fontSize: 16),
+                        ),
                       ],
-                    )
-                  : const Text('Are you sure you want to request the new group?'),
-              actions: _isLoading
-                  ? [] // No actions while loading
-                  : [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () async {
-                          // Update dialog state to show loading
-                          setDialogState(() {
-                            _isLoading = true;
-                          });
-                          
-                          // Request community
-                          await requestCommunity();
-                          
-                          // Close dialog after operation is complete
-                          if (mounted) {
-                            Navigator.pop(context);
-                          }
-                        },
-                        child: const Text('Request'),
-                      ),
-                    ],
-            );
-          }
-        );
-      },
-    ).then((value) {
-      // Only pop the main screen if the operation was successful
-      if (!_isLoading) {
-        Navigator.pop(context);
-      }
-    });
-  }
-
+                    ),
+                  )
+                : const Text(
+                    'Are you sure you want to request the new group?',
+                    style: TextStyle(fontSize: 16),
+                  ),
+            actionsPadding: const EdgeInsets.only(right: 16,left: 16, bottom: 15),
+            actions: _isLoading
+                ? [] // No actions while loading
+                : [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Outerbutton(text: 'Cancel'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Innerbutton(
+                            function: () async {
+                              // Update dialog state to show loading
+                              setDialogState(() {
+                                _isLoading = true;
+                              });
+                              
+                              // Request community
+                              await requestCommunity();
+                              
+                              // Close dialog after operation is complete
+                              if (mounted) {
+                                Navigator.pop(context);
+                              }
+                            },
+                            text: 'Request',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+          );
+        },
+      );
+    },
+  ).then((value) {
+    // Reset loading state
+    _isLoading = false;
+    
+    // Only pop the main screen if the operation was successful
+    if (!_isLoading) {
+      Navigator.pop(context);
+    }
+  });
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -226,12 +266,14 @@ class _NewgroupState extends State<Newgroup> {
                   height: 15,
                 ),
                 Center(
-                  child: const Text(
+                  child: Text(
                     "Create Group",
                     style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 25,
-                        fontFamily: 'Electrolize'),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 25,
+                      color: Theme.of(context).colorScheme.primary,
+                      fontFamily: 'Electrolize',
+                    ),
                   ),
                 ),
                 SizedBox(
@@ -257,19 +299,19 @@ class _NewgroupState extends State<Newgroup> {
                 // Tag Dropdown
                 _buildTagDropdown(),
 
-                const SizedBox(height: 25),
+                const SizedBox(height: 30),
 
                 // Add Button
-                Button1(
-                  title: 'Request Group',
-                  colors: Theme.of(context).colorScheme.primary,
+                CustomButton(
+                  text: 'Request Group',
+                  color: Theme.of(context).colorScheme.primary,
                   textColor: Colors.white,
-                  onTap: () {
+                  onPressed: () {
                     if (_validateFields()) {
                       _showConfirmationDialog();
                     }
                   },
-                ),
+                )
               ],
             ),
           ),

@@ -3,7 +3,16 @@ import 'package:flutter/material.dart';
 class Innerbutton extends StatelessWidget {
   final String text;
   final VoidCallback function;
-  const Innerbutton({super.key, required this.function, required this.text});
+  final double hPadding;
+  final double vPadding;
+
+  const Innerbutton({
+    super.key,
+    required this.function,
+    required this.text,
+    this.hPadding = 3,
+    this.vPadding = 5,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +38,7 @@ class Innerbutton extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
+        padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: vPadding),
         child: Text(
           text,
           style: TextStyle(

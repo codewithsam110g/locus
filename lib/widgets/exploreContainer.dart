@@ -18,15 +18,19 @@ class Explorecontainer extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10.0),
       child: Container(
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(width: 1, color: Colors.black)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            width: 1,
+            color: Colors.black,
+          ),
+        ),
         padding: const EdgeInsets.all(5.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal:8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10), // Image border radius
                 child: img.contains('asset')

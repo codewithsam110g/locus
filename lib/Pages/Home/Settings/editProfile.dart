@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:locus/Utils/cloudinary.dart';
+import 'package:locus/widgets/Buttons/newButton.dart';
 import 'package:locus/widgets/button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -62,6 +63,7 @@ class _EditprofileState extends State<Editprofile> {
   XFile? _selectedImage;
   Color avatarColor = Colors.blue; // default background color
   late Uint8List _selectedImageData;
+  bool isSend = false;
   @override
   void initState() {
     super.initState();
@@ -92,6 +94,9 @@ class _EditprofileState extends State<Editprofile> {
   Future<void> _updateProfile(BuildContext ctx) async {
     if (!formKey.currentState!.validate()) return;
 
+    setState(() {
+      isSend = true;
+    });
     final supabase = Supabase.instance.client;
     final userId = supabase.auth.currentUser!.id;
     final url = await uploadFile(_selectedImage);
@@ -102,6 +107,9 @@ class _EditprofileState extends State<Editprofile> {
     };
 
     await supabase.from('profile').update(updates).eq('user_id', userId);
+    setState(() {
+      isSend = false;
+    });
     Navigator.of(ctx).pop();
   }
 
@@ -127,12 +135,11 @@ class _EditprofileState extends State<Editprofile> {
           radius: 50,
           backgroundColor:
               widget.photoURL == "NAN" ? avatarColor : Colors.transparent,
-          backgroundImage: 
-            _selectedImage != null 
-                ? MemoryImage(_selectedImageData)
-                : (widget.photoURL != "NAN" 
-                    ? NetworkImage(widget.photoURL) 
-                    : null),
+          backgroundImage: _selectedImage != null
+              ? MemoryImage(_selectedImageData)
+              : (widget.photoURL != "NAN"
+                  ? NetworkImage(widget.photoURL)
+                  : null),
           child: widget.photoURL == "NAN"
               ? Text(
                   _nameController.text.isNotEmpty
@@ -300,20 +307,22 @@ class _EditprofileState extends State<Editprofile> {
                       ),
                       SizedBox(height: height * 0.04),
                       Center(
-                        child: Button1(
-                          title: 'Save',
-                          colors: Colors.white,
-                          textColor: Theme.of(context).colorScheme.primary,
-                          onTap: () async {
-                            if (formKey.currentState!.validate()) {
-                              await _updateProfile(context);
-                              print('Profile updated successfully');
-                            } else {
-                              print('Form is invalid');
-                            }
-                          },
+                        child: CustomButton(
+                          text: isSend ? "Saving.." : "Save",
+                          color: Theme.of(context).colorScheme.primary,
+                          textColor: Colors.white,
+                          onPressed: isSend
+                              ? () {}
+                              : () async {
+                                  if (formKey.currentState!.validate()) {
+                                    await _updateProfile(context);
+                                    print('Profile updated successfully');
+                                  } else {
+                                    print('Form is invalid');
+                                  }
+                                },
                         ),
-                      ),
+                      )
                     ],
                   ),
                 ),

@@ -212,7 +212,7 @@ class _LoginmainState extends State<Loginmain> {
                     const SizedBox(height: 20),
                     Inputfields(
                       title: 'Email',
-                      emoji: const Icon(Icons.person_2_outlined),
+                      emoji: const Icon(Icons.person_2),
                       controller: _emailController,
                       onTap: (value) {
                         return null;

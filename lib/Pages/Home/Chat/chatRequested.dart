@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:locus/Pages/Home/Chat/chatInterface.dart';
-import 'package:locus/widgets/chat_bubble_user.dart';
 import 'package:locus/widgets/Buttons/InnerButton.dart';
 import 'package:locus/widgets/Buttons/OuterButton.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,11 +7,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class Chatforrequested extends StatefulWidget {
   final String img;
   final String id;
+  final String name;
 
   const Chatforrequested({
     super.key,
     required this.id,
     required this.img,
+    required this.name,
   });
 
   @override
@@ -27,6 +28,7 @@ class _ChatforrequestedState extends State<Chatforrequested> {
   final supabase = Supabase.instance.client;
   String? userName; // Variable to store the fetched username
   bool isLoading = true; // Loading state
+  bool isAccept = false;
 
   @override
   void initState() {
@@ -43,22 +45,18 @@ class _ChatforrequestedState extends State<Chatforrequested> {
     final currentUserId = supabase.auth.currentUser?.id;
     if (currentUserId == null) return;
 
+    setState(() {
+      isAccept = true;
+    });
+
     try {
       // Step 1: Update request status to "accept"
-      await supabase
-          .from('requests')
-          .update({'status': 'accept'})
-          .match({
-            'reciever_uid': currentUserId,
-            'requested_uid': widget.id
-          });
+      await supabase.from('requests').update({'status': 'accept'}).match(
+          {'reciever_uid': currentUserId, 'requested_uid': widget.id});
 
       // Step 2: Insert a new chat entry (no sorting needed)
-      await supabase.from('chats').insert({
-        'uid_1': currentUserId,
-        'uid_2': widget.id,
-        'is_active': true
-      });
+      await supabase.from('chats').insert(
+          {'uid_1': currentUserId, 'uid_2': widget.id, 'is_active': true});
 
       Navigator.of(context).pop();
       // Navigate to chat interface
@@ -66,7 +64,10 @@ class _ChatforrequestedState extends State<Chatforrequested> {
         MaterialPageRoute(
           builder: (builder) => Chatinterface(
             id: widget.id,
-            avatar: widget.img.contains("asset")?Image.asset(widget.img):Image.network(widget.img),
+            avatar: widget.img.contains("asset")
+                ? Image.asset(widget.img)
+                : Image.network(widget.img),
+            userName: widget.name,
           ),
         ),
       );
@@ -75,6 +76,10 @@ class _ChatforrequestedState extends State<Chatforrequested> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to accept request!')),
       );
+    } finally {
+      setState(() {
+        isAccept = false;
+      });
     }
   }
 
@@ -97,16 +102,6 @@ class _ChatforrequestedState extends State<Chatforrequested> {
     super.dispose();
   }
 
-  Widget buildReceivedMessage(String message, String img) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: ChatBubbleUser(
-        message: message,
-        time: '10:20 AM',
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -114,39 +109,35 @@ class _ChatforrequestedState extends State<Chatforrequested> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
         automaticallyImplyLeading: false,
-        title: Padding(
-          padding: const EdgeInsets.all(15.0),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundImage: AssetImage(widget.img),
+        title: Row(
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios,
+                color: Colors.white,
               ),
-              const SizedBox(width: 10),
-              isLoading
-                  ? const CircularProgressIndicator() // Show loading indicator
-                  : Text(
+              onPressed: () => Navigator.pop(context),
+            ),
+            CircleAvatar(
+              backgroundImage: AssetImage(widget.img),
+            ),
+            const SizedBox(width: 10),
+            isLoading
+                ? const CircularProgressIndicator() // Show loading indicator
+                : Expanded(
+                    child: Text(
                       userName ?? 'Unknown',
                       style: const TextStyle(
                         fontSize: 18,
                         color: Colors.white,
                         fontFamily: 'Electrolize',
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
-            ],
-          ),
+                  ),
+          ],
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: IconButton(
-              icon: const Icon(
-                Icons.close,
-                color: Colors.white,
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -158,10 +149,7 @@ class _ChatforrequestedState extends State<Chatforrequested> {
               child: ListView.builder(
                 itemCount: receivedMessages.length,
                 itemBuilder: (context, index) {
-                  return buildReceivedMessage(
-                    receivedMessages[index],
-                    widget.img,
-                  );
+                  return;
                 },
               ),
             ),
@@ -179,7 +167,7 @@ class _ChatforrequestedState extends State<Chatforrequested> {
             ),
             const SizedBox(height: 20),
             const Text(
-              'If you accept, they will also be able to call you and see info such as your activity and status when you have read messages.',
+              'If you accept, you can chat with this user and share information.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
@@ -189,12 +177,16 @@ class _ChatforrequestedState extends State<Chatforrequested> {
             ),
             const SizedBox(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Outerbutton(text: 'Reject'),
+                const Outerbutton(
+                  text: 'Reject',
+                  hPadding: 30,
+                ),
                 Innerbutton(
-                  function: _acceptChatRequest,
-                  text: 'Accept',
+                  function:isAccept ? (){} : _acceptChatRequest,
+                  text:isAccept ? "Accepting.." : 'Accept',
+                  hPadding: 30,
                 ),
               ],
             ),

@@ -145,11 +145,11 @@ class _HomeState extends State<Home> {
     });
   }
   
-  void _onMarkerTap(String comId,String name) {
+  void _onMarkerTap(String comId,String name, String imgUrl) {
    
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => Userview(id: comId,name:name),
+        builder: (context) => Userview(id: comId,name:name,profilePicUrl: imgUrl,),
       ),
     );
   }
@@ -231,7 +231,7 @@ class _HomeState extends State<Home> {
                                     width: 80,
                                     height: 70,
                                     child: GestureDetector(
-                                      onTap: () => _onMarkerTap(community['com_id'],community['title']),
+                                      onTap: () => _onMarkerTap(community['com_id'],community['title'],community['logo_link'],),
                                       child: Column(
                                         children: [
                                           const Icon(
