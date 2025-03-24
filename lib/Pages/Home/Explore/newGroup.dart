@@ -190,7 +190,7 @@ class _NewgroupState extends State<Newgroup> {
                     'Are you sure you want to request the new group?',
                     style: TextStyle(fontSize: 16),
                   ),
-            actionsPadding: const EdgeInsets.only(right: 16,left: 16, bottom: 15),
+            actionsPadding: const EdgeInsets.only(right: 14,left: 14, bottom: 15),
             actions: _isLoading
                 ? [] // No actions while loading
                 : [
@@ -203,7 +203,7 @@ class _NewgroupState extends State<Newgroup> {
                             child: Outerbutton(text: 'Cancel'),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Innerbutton(
                             function: () async {

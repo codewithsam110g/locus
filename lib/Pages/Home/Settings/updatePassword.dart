@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:locus/widgets/Buttons/newButton.dart';
 import 'package:locus/widgets/button.dart';
 import 'package:locus/widgets/inputfeilds.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,12 +14,17 @@ class _UpdatepasswordState extends State<Updatepassword> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
 
+   bool isConfirm = false;
+
   String? _passwordError;
   String? _newPasswordError;
 
   final supabase = Supabase.instance.client;
 
   void _validateAndShowDialog(String password) async {
+    setState(() {
+      isConfirm = true;
+    });
     try {
       await supabase.auth.updateUser(UserAttributes(password: password));
       Navigator.of(context).pop();
@@ -44,6 +50,10 @@ class _UpdatepasswordState extends State<Updatepassword> {
         margin: EdgeInsets.all(10),
         duration: Duration(seconds: 4),
       ));
+    }finally{
+      setState(() {
+        isConfirm = false;
+      });
     }
   }
 
@@ -135,14 +145,14 @@ class _UpdatepasswordState extends State<Updatepassword> {
                       ),
                     const SizedBox(height: 50),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 30.0),
+                      padding: EdgeInsets.only(bottom: 30),
                       child: Align(
                         alignment: Alignment.center,
-                        child: Button1(
-                          title: 'Confirm',
-                          colors: Theme.of(context).colorScheme.primary,
+                        child: CustomButton(
+                          text:isConfirm ? 'Confirming...' : 'Confirm',
+                          color: Theme.of(context).colorScheme.primary,
                           textColor: Colors.white,
-                          onTap: () {
+                          onPressed:isConfirm ? (){}: () {
                             _validateForm();
                             if (_passwordError == null &&
                                 _newPasswordError == null) {

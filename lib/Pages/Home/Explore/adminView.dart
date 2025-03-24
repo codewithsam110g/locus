@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:locus/widgets/chat_bubble.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -19,7 +21,8 @@ class _AdminviewState extends State<Adminview> {
   String groupName = "Group Name";
   String com_id = "";
   bool isLoading = true;
-  String imgURL = 'assets/img/mohan.jpg';
+  bool isSend = false;
+  String imgURL = '';
 
   @override
   void initState() {
@@ -64,6 +67,10 @@ class _AdminviewState extends State<Adminview> {
   void sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
 
+    setState(() {
+      isSend = true;
+    });
+
     String messageText = _messageController.text.trim();
     _messageController.clear();
     _inputScrollController.jumpTo(0);
@@ -71,6 +78,10 @@ class _AdminviewState extends State<Adminview> {
       "com_id": com_id,
       "message": messageText,
       "created_at": DateTime.now().toUtc().toIso8601String(),
+    });
+
+    setState(() {
+      isSend = false;
     });
 
     fetchMessages();
@@ -121,6 +132,10 @@ class _AdminviewState extends State<Adminview> {
     }
   }
 
+  void _showBottomSheet() {
+
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,28 +143,41 @@ class _AdminviewState extends State<Adminview> {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            CircleAvatar(
-              backgroundImage: imgURL.contains("asset")
-                  ? AssetImage(imgURL) as ImageProvider
-                  : NetworkImage(imgURL) as ImageProvider,
+            IconButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              icon: Icon(
+                Icons.arrow_back_ios,
+                color: Colors.white,
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                _showBottomSheet();
+              },
+              child: CircleAvatar(
+                backgroundImage: imgURL.contains("asset")
+                    ? AssetImage(imgURL) as ImageProvider
+                    : NetworkImage(imgURL) as ImageProvider,
+              ),
             ),
             const SizedBox(width: 10),
-            Text(
-              groupName,
-              style: const TextStyle(
-                fontSize: 18,
-                color: Colors.white,
-                fontFamily: 'Electrolize',
+            GestureDetector(
+              onTap: () {
+                _showBottomSheet();
+              },
+              child: Text(
+                groupName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  color: Colors.white,
+                  fontFamily: 'Electrolize',
+                ),
               ),
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
       body: Column(
@@ -262,12 +290,12 @@ class _AdminviewState extends State<Adminview> {
                 const SizedBox(width: 10),
                 Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
+                    color: isSend ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.primary,
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
                     icon: const Icon(Icons.send, size: 28, color: Colors.white),
-                    onPressed: sendMessage,
+                    onPressed: isSend ? (){} : sendMessage,
                     padding: const EdgeInsets.all(12),
                     constraints: const BoxConstraints(),
                   ),
