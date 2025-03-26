@@ -322,7 +322,7 @@ class _HomeState extends State<Home> {
             onPressed: _initialize,
           ),
           IconButton(
-            onPressed: _isNetworkAvailable ? _toggleRadiusSlider : null ,
+            onPressed: _isNetworkAvailable ? _toggleRadiusSlider : null,
             icon: Icon(
               Icons.location_on,
               color: Colors.white,
@@ -534,6 +534,8 @@ class _HomeState extends State<Home> {
     String message = _errorMessage ?? 'An unknown error occurred';
     List<Widget> actions = [
       ElevatedButton(
+        style:
+            ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.white)),
         onPressed: _initialize,
         child: const Text('Try Again'),
       ),
@@ -547,8 +549,14 @@ class _HomeState extends State<Home> {
       title = 'Location Services Disabled';
       actions.add(
         OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            backgroundColor: Colors.white,
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+            ), // ✅ Border color
+          ),
           onPressed: _openLocationSettings,
-          child: const Text('Open Location Settings'),
+          child: const Text('Open App Settings'),
         ),
       );
     } else if (message.contains('Location permission denied')) {
@@ -556,6 +564,11 @@ class _HomeState extends State<Home> {
       title = 'Location Permission Required';
       actions.add(
         OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+            ), // ✅ Border color
+          ),
           onPressed: _openAppSettings,
           child: const Text('Open App Settings'),
         ),

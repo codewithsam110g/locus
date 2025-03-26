@@ -8,7 +8,7 @@ class Outerbutton extends StatelessWidget {
   const Outerbutton({
     super.key,
     required this.text,
-    this.hPadding = 3,
+    this.hPadding = 0,
     this.vPadding = 5,
   });
 

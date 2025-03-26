@@ -106,11 +106,8 @@ class _ChatState extends State<Chat> {
             _hasLocationPermission = false;
           });
         }
-        _showLocationDialog(
-          "Location services are disabled",
-          "Please enable location services to view nearby messages.",
-          true
-        );
+        _showLocationDialog("Location services are disabled",
+            "Please enable location services to view nearby messages.", true);
         return;
       }
 
@@ -123,10 +120,9 @@ class _ChatState extends State<Chat> {
               _hasLocationPermission = false;
             });
             _showLocationDialog(
-              "Location permission denied",
-              "Location permission is required to view nearby messages.",
-              false
-            );
+                "Location permission denied",
+                "Location permission is required to view nearby messages.",
+                false);
           }
           return;
         }
@@ -137,11 +133,8 @@ class _ChatState extends State<Chat> {
           setState(() {
             _hasLocationPermission = false;
           });
-          _showLocationDialog(
-            "Location permission denied permanently",
-            "Please enable location permission in app settings.",
-            false
-          );
+          _showLocationDialog("Location permission denied permanently",
+              "Please enable location permission in app settings.", false);
         }
         return;
       }
@@ -158,7 +151,8 @@ class _ChatState extends State<Chat> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Error accessing location: ${e.toString().split('\n')[0]}"),
+            content: Text(
+                "Error accessing location: ${e.toString().split('\n')[0]}"),
             backgroundColor: Colors.red,
           ),
         );
@@ -242,7 +236,7 @@ class _ChatState extends State<Chat> {
               currentUserLat = data["last_loc"]["lat"] as double;
               currentUserLong = data["last_loc"]["long"] as double;
             }
-            
+
             if (data["range"] != null) {
               distanceThreshold = double.parse(data["range"].toString());
             }
@@ -253,7 +247,7 @@ class _ChatState extends State<Chat> {
         });
       }
     } catch (e) {
-      print("Error setting location: $e");      
+      print("Error setting location: $e");
     }
   }
 
@@ -271,7 +265,7 @@ class _ChatState extends State<Chat> {
           setState(() {
             isLoading = false;
           });
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
                 content: Text(
@@ -282,7 +276,7 @@ class _ChatState extends State<Chat> {
       }
 
       final currentUserId = supabase.auth.currentUser!.id;
-      
+
       // Call stored procedure in Supabase to get nearby messages
       final response = await supabase.rpc('get_nearby_messages', params: {
         'lat': currentUserLat,
@@ -397,14 +391,14 @@ class _ChatState extends State<Chat> {
         // Handle specific RPC error (get_nearby_messages function)
         if (errorString.contains('get_nearby_messages')) {
           _showRetryDialog(
-            "Error loading nearby messages",
-            "There was a problem with the location-based service. Please check your location settings and try again.",
-            _fetchMessages
-          );
+              "Error loading nearby messages",
+              "There was a problem with the location-based service. Please check your location settings and try again.",
+              _fetchMessages);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Error fetching messages: ${errorMessage.split('\n')[0]}"),
+              content: Text(
+                  "Error fetching messages: ${errorMessage.split('\n')[0]}"),
               backgroundColor: Colors.red,
               action: SnackBarAction(
                 label: 'Retry',
@@ -475,7 +469,7 @@ class _ChatState extends State<Chat> {
     try {
       // Check if subscription already exists
       _locationSubscription?.cancel();
-      
+
       final userId = supabase.auth.currentUser!.id;
 
       _locationSubscription = supabase
@@ -487,7 +481,7 @@ class _ChatState extends State<Chat> {
               if (data.isNotEmpty) {
                 try {
                   final userData = data.first;
-                  
+
                   if (userData["last_loc"] != null) {
                     final newLat = userData["last_loc"]["lat"] as double;
                     final newLong = userData["last_loc"]["long"] as double;
@@ -534,8 +528,9 @@ class _ChatState extends State<Chat> {
     try {
       // Check if subscription already exists
       _messagesSubscription?.cancel();
-      
-      _messagesSubscription = supabase.from("messages").stream(primaryKey: ["id"]).listen(
+
+      _messagesSubscription =
+          supabase.from("messages").stream(primaryKey: ["id"]).listen(
         (data) {
           _fetchMessages();
         },
@@ -597,7 +592,7 @@ class _ChatState extends State<Chat> {
                       style: TextStyle(fontSize: 16),
                     ),
               actionsPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               actions: _isLoading
                   ? [] // No actions while loading
                   : [
@@ -610,7 +605,7 @@ class _ChatState extends State<Chat> {
                               child: const Outerbutton(text: 'Cancel'),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Innerbutton(
                               function: () async {
@@ -632,11 +627,12 @@ class _ChatState extends State<Chat> {
                                   setDialogState(() {
                                     _isLoading = false;
                                   });
-                                  
+
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text("Failed to send request: ${e.toString().split('\n')[0]}"),
+                                        content: Text(
+                                            "Failed to send request: ${e.toString().split('\n')[0]}"),
                                         backgroundColor: Colors.red,
                                       ),
                                     );
@@ -658,9 +654,10 @@ class _ChatState extends State<Chat> {
 
   Future<void> _sendChatRequest(String recipientUserId) async {
     if (!_isNetworkAvailable) {
-      throw Exception("No internet connection. Please try again when you're online.");
+      throw Exception(
+          "No internet connection. Please try again when you're online.");
     }
-    
+
     final currentUserId = supabase.auth.currentUser!.id;
     await supabase.from('requests').insert({
       'requested_uid': currentUserId,
@@ -799,7 +796,7 @@ class _ChatState extends State<Chat> {
         children: [
           // Offline status indicator
           if (!_isNetworkAvailable) _buildOfflineWidget(),
-          
+
           // Location warning if location is disabled
           if (!isLocationEnabled || !_hasLocationPermission)
             Container(
@@ -824,14 +821,15 @@ class _ChatState extends State<Chat> {
                 ],
               ),
             ),
-          
+
           // Main chat list area
           Expanded(
             child: Stack(
               children: [
                 // Chat list.
                 Padding(
-                  padding: const EdgeInsets.only(top: 15.0, left: 15, bottom: 80),
+                  padding:
+                      const EdgeInsets.only(top: 15.0, left: 15, bottom: 80),
                   child: Column(
                     children: [
                       Expanded(
@@ -842,27 +840,55 @@ class _ChatState extends State<Chat> {
                             : chats.isEmpty
                                 ? Center(
                                     child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        const Text(
-                                          'No messages nearby. Try adjusting your range.',
+                                        Icon(
+                                          Icons.chat_bubble_outline,
+                                          size: 64,
+                                          color:Colors.grey[400],
                                         ),
-                                        if (!_isNetworkAvailable || !isLocationEnabled)
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No messages nearby',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 32.0),
+                                          child: Text(
+                                            'Try adjusting your range or add a new message to start the conversation',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ),
+                                        if (!_isNetworkAvailable ||
+                                            !isLocationEnabled)
                                           Padding(
                                             padding: const EdgeInsets.all(16.0),
                                             child: ElevatedButton(
                                               onPressed: () {
                                                 if (!_isNetworkAvailable) {
                                                   // Open system settings for network
-                                                  const MethodChannel('app.channel.shared.methodChannel')
-                                                      .invokeMethod('openNetworkSettings');
+                                                  const MethodChannel(
+                                                          'app.channel.shared.methodChannel')
+                                                      .invokeMethod(
+                                                          'openNetworkSettings');
                                                 } else if (!isLocationEnabled) {
-                                                  Geolocator.openLocationSettings();
+                                                  Geolocator
+                                                      .openLocationSettings();
                                                 }
                                               },
-                                              child: Text(!_isNetworkAvailable 
-                                                ? 'Check Network Settings'
-                                                : 'Check Location Settings'),
+                                              child: Text(!_isNetworkAvailable
+                                                  ? 'Check Network Settings'
+                                                  : 'Check Location Settings'),
                                             ),
                                           ),
                                       ],
@@ -879,27 +905,31 @@ class _ChatState extends State<Chat> {
                                         final bool isAccept =
                                             chat['isActive'] == "true";
                                         final bool useImage =
-                                            chat['image_link'] != null && chat['image_link'] != "";
+                                            chat['image_link'] != null &&
+                                                chat['image_link'] != "";
                                         return Chatcontainer(
                                           type: chat['type'] as String,
                                           avatar: useImage
                                               ? buildAvatarWithNetworkImage(
                                                   chat['image_link'])
-                                              : buildAvatar(chat['name'] as String),
+                                              : buildAvatar(
+                                                  chat['name'] as String),
                                           name: chat['name'] as String,
                                           text: chat['text'] as String,
                                           timestamp: chat["created_at"],
                                           function: () {
                                             if (!_isNetworkAvailable) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
                                                 const SnackBar(
-                                                  content: Text("No internet connection. Please try again when connected."),
+                                                  content: Text(
+                                                      "No internet connection. Please try again when connected."),
                                                   backgroundColor: Colors.red,
                                                 ),
                                               );
                                               return;
                                             }
-                                            
+
                                             if (chat['isActive'] == "pending") {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(
@@ -910,20 +940,24 @@ class _ChatState extends State<Chat> {
                                                 ),
                                               );
                                             } else if (!isAccept) {
-                                              _showRequest(context, chat['uid']);
+                                              _showRequest(
+                                                  context, chat['uid']);
                                             } else {
                                               Navigator.of(context)
                                                   .push(
                                                 MaterialPageRoute(
-                                                  builder: (builder) => Chatinterface(
+                                                  builder: (builder) =>
+                                                      Chatinterface(
                                                     id: chat['uid'] as String,
                                                     avatar: useImage
                                                         ? buildAvatarWithNetworkImage(
                                                             chat['image_link'])
                                                         : buildAvatar(
-                                                            chat['name'] as String,
+                                                            chat['name']
+                                                                as String,
                                                           ),
-                                                    userName: chat['name'] as String,
+                                                    userName:
+                                                        chat['name'] as String,
                                                   ),
                                                 ),
                                               )
@@ -942,20 +976,21 @@ class _ChatState extends State<Chat> {
                 ),
                 // Floating action button to compose a new message.
                 Positioned(
-                  bottom: 20,
+                  bottom: 100,
                   right: 30,
                   child: GestureDetector(
                     onTap: () {
                       if (!_isNetworkAvailable) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text("Cannot send messages while offline."),
+                            content:
+                                Text("Cannot send messages while offline."),
                             backgroundColor: Colors.red,
                           ),
                         );
                         return;
                       }
-                      
+
                       showModalBottomSheet(
                         context: context,
                         isScrollControlled: true,
@@ -973,7 +1008,8 @@ class _ChatState extends State<Chat> {
                                   topRight: Radius.circular(20),
                                 ),
                               ),
-                              child: Message(), // Your message composition widget.
+                              child:
+                                  Message(), // Your message composition widget.
                             );
                           },
                         ),
