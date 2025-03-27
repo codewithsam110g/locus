@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:locus/widgets/Buttons/newButton.dart';
 import 'package:locus/widgets/inputfeilds.dart';
-import 'package:locus/Pages/LoginRegister/loginMain.dart';
-import 'package:locus/widgets/otherOptions.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -241,7 +239,7 @@ class _Register2State extends State<Register2> {
                         child: Align(
                           alignment: Alignment.center,
                           child: CustomButton(
-                            text: _isLoading ? 'Loading...' : 'Login',
+                            text: _isLoading ? 'Loading...' : 'Register',
                             color: Theme.of(context).colorScheme.primary,
                             textColor: Colors.white,
                             onPressed: _isLoading
@@ -312,20 +310,7 @@ class _Register2State extends State<Register2> {
                           ),
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 20.0),
-                        child: Otheroptions(
-                          text1: 'Already have an account? ',
-                          text2: 'Login',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (builder) => Loginmain(),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
+                      
                       Align(
                         alignment: Alignment.center,
                         child: Container(

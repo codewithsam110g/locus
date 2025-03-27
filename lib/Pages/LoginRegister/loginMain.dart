@@ -52,8 +52,6 @@ Future<AuthResponse> _googleSignIn(BuildContext context) async {
     // Check if user is new
     final isNewUser = await _isNewUser(authResponse.user!.id);
 
-    await doStuff(); // Handle FCM token setup
-
     if (isNewUser) {
       // Navigate to onboarding page for new users
       Navigator.of(context).push(
@@ -62,6 +60,7 @@ Future<AuthResponse> _googleSignIn(BuildContext context) async {
         ),
       );
     } else {
+      await doStuff(); // Handle FCM token setup
       // Navigate to main screen for existing users
       Navigator.of(context).push(
         MaterialPageRoute(
@@ -137,7 +136,6 @@ Future<void> setFcmToken(String? token) async {
 
 Future<void> getFCMToken() async {
   String? token = await FirebaseMessaging.instance.getToken();
-  print("FCM Token: $token");
   await setFcmToken(token);
 }
 
