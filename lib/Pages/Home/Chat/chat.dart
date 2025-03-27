@@ -749,6 +749,7 @@ class _ChatState extends State<Chat> {
           GestureDetector(
             onTap: () {
               if (!isLoading) {
+                _checkLocationPermission();
                 _fetchMessages();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("Refreshing messages...")),
@@ -846,7 +847,7 @@ class _ChatState extends State<Chat> {
                                         Icon(
                                           Icons.chat_bubble_outline,
                                           size: 64,
-                                          color:Colors.grey[400],
+                                          color: Colors.grey[400],
                                         ),
                                         const SizedBox(height: 16),
                                         Text(
@@ -873,23 +874,46 @@ class _ChatState extends State<Chat> {
                                             !isLocationEnabled)
                                           Padding(
                                             padding: const EdgeInsets.all(16.0),
-                                            child: ElevatedButton(
-                                              onPressed: () {
-                                                if (!_isNetworkAvailable) {
-                                                  // Open system settings for network
-                                                  const MethodChannel(
-                                                          'app.channel.shared.methodChannel')
-                                                      .invokeMethod(
-                                                          'openNetworkSettings');
-                                                } else if (!isLocationEnabled) {
-                                                  Geolocator
-                                                      .openLocationSettings();
-                                                }
-                                              },
-                                              child: Text(!_isNetworkAvailable
-                                                  ? 'Check Network Settings'
-                                                  : 'Check Location Settings'),
-                                            ),
+                                            child: Row(children: [
+                                              ElevatedButton(
+                                                style: ButtonStyle(
+                                                    backgroundColor:
+                                                        WidgetStatePropertyAll(
+                                                            Colors.white)),
+                                                onPressed: () {
+                                                  _checkLocationPermission();
+                                                  _fetchMessages();
+                                                },
+                                                child: const Text('Try Again'),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal:8.0),
+                                                child: OutlinedButton(
+                                                  onPressed: () {
+                                                    if (!_isNetworkAvailable) {
+                                                      // Open system settings for network
+                                                      const MethodChannel(
+                                                              'app.channel.shared.methodChannel')
+                                                          .invokeMethod(
+                                                              'openNetworkSettings');
+                                                    } else if (!isLocationEnabled) {
+                                                      Geolocator
+                                                          .openLocationSettings();
+                                                    }
+                                                  },
+                                                  style: OutlinedButton.styleFrom(
+                                                    side: BorderSide(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .primary,
+                                                    ), // ✅ Border color
+                                                  ),
+                                                  child: Text(!_isNetworkAvailable
+                                                      ? 'Check Network Settings'
+                                                      : 'Check Location Settings'),
+                                                ),
+                                              ),
+                                            ]),
                                           ),
                                       ],
                                     ),

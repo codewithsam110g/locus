@@ -147,7 +147,8 @@ class _EditprofileState extends State<Editprofile> {
               : (widget.photoURL != "NAN"
                   ? NetworkImage(widget.photoURL)
                   : null),
-          child: widget.photoURL == "NAN"
+          child: widget.photoURL == "NAN" &&
+                  _selectedImage == null
               ? Text(
                   _nameController.text.isNotEmpty
                       ? _nameController.text[0].toUpperCase()

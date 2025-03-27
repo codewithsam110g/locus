@@ -15,11 +15,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "814624774577-ebst15mdsuc9a4r42pp5skk352t64966.apps.googleusercontent.com",
+          "client_id": "814624774577-gcahtj2f180maeer93qqp6kn64bkq0h3.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.codewithsam110g.locus",
-            "certificate_hash": "dfbee99b38b57a105352bf02b83ab13f5c42ed1a"
+            "certificate_hash": "2ea5b71b0d6b6b534472b04cffc5c89ac189a407"
           }
         },
         {

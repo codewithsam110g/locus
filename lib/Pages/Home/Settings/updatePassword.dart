@@ -172,9 +172,4 @@ class _UpdatepasswordState extends State<Updatepassword> {
       ),
     );
   }
-
-  void _clearFields() {
-    _passwordController.clear();
-    _newPasswordController.clear();
-  }
 }

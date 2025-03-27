@@ -391,6 +391,18 @@ class _HomeState extends State<Home> {
                           'https://cdn-icons-png.flaticon.com/512/1548/1548682.png',
                         ),
                       ),
+                      CircleLayer(
+                        circles: [
+                          CircleMarker(
+                            point: _currentLocation!,
+                            color: Colors.blue.withOpacity(0.3),
+                            borderColor: Colors.blue,
+                            borderStrokeWidth: 2,
+                            useRadiusInMeter: true,
+                            radius: _selectedRadius,
+                          ),
+                        ],
+                      ),
                       MarkerLayer(
                         markers: [
                           Marker(
@@ -448,18 +460,6 @@ class _HomeState extends State<Home> {
                                   ),
                                 ),
                               )),
-                        ],
-                      ),
-                      CircleLayer(
-                        circles: [
-                          CircleMarker(
-                            point: _currentLocation!,
-                            color: Colors.blue.withOpacity(0.3),
-                            borderColor: Colors.blue,
-                            borderStrokeWidth: 2,
-                            useRadiusInMeter: true,
-                            radius: _selectedRadius,
-                          ),
                         ],
                       ),
                     ],
